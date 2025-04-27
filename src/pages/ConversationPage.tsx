@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
+// Removed EventSourcePolyfill import
 import Header from '../components/Header';
 import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { Conversation, Message, ProjectDetails } from '../types';
-import { getConversationHistory, getProjectDetails, sendMessage } from '../mock/data';
+import { getConversationHistory, getProjectDetails } from '../mock/data'; // Removed sendMessage import
+import { sendStreamingMessage } from '../services/api'; // Added import for the new API function
 
 const ConversationPage: React.FC = () => {
   const { projectId, type } = useParams<{ projectId: string; type: 'plan' | 'technicalSpecs' }>();
@@ -14,22 +16,23 @@ const ConversationPage: React.FC = () => {
   const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null); // Changed ref name and type
 
   const typeName = type === 'plan' ? 'Project Plan' : 'Technical Specifications';
 
   useEffect(() => {
     const fetchData = async () => {
       if (!projectId || !type) return;
-      
+
       try {
         setIsLoading(true);
-        
+
         // Fetch both conversation history and project details
         const [conversationData, projectData] = await Promise.all([
           getConversationHistory(projectId, type),
           getProjectDetails(projectId)
         ]);
-        
+
         setConversation(conversationData);
         setProjectDetails(projectData);
       } catch (error) {
@@ -40,36 +43,96 @@ const ConversationPage: React.FC = () => {
     };
 
     fetchData();
+
+    // Cleanup function to abort fetch on unmount or dependency change
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [projectId, type]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = (content: string) => {
     if (!projectId || !type || isSendingMessage) return;
 
-    try {
-      setIsSendingMessage(true);
-      const newMessage = await sendMessage(projectId, type, content);
-      
-      // Update conversation with new message
-      setConversation(prev => {
-        if (!prev) {
-          return {
-            id: `conv-${Date.now()}`,
-            projectId,
-            type,
-            messages: [newMessage]
-          };
-        }
-        return {
-          ...prev,
-          messages: [...prev.messages, newMessage]
-        };
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setIsSendingMessage(false);
-    }
+    setIsSendingMessage(true);
+
+    // 1. Add user message optimistically
+    const userMessage: Message = {
+      id: `m-user-${Date.now()}`,
+      content,
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+    };
+
+    // 2. Add a placeholder for the AI response
+    const aiMessagePlaceholder: Message = {
+      id: `m-ai-${Date.now()}`,
+      content: '', // Start with empty content
+      sender: 'ai',
+      timestamp: new Date().toISOString(),
+      streaming: true, // Add a flag to indicate streaming
+    };
+
+    setConversation(prev => {
+      const updatedMessages = prev ? [...prev.messages, userMessage, aiMessagePlaceholder] : [userMessage, aiMessagePlaceholder];
+      return {
+        id: prev?.id || `conv-${Date.now()}`,
+        projectId,
+        type,
+        messages: updatedMessages,
+      };
+    });
+
+    // Abort any existing request before starting a new one
+    abortControllerRef.current?.abort();
+
+    // 3. Call the API function and store the AbortController
+    abortControllerRef.current = sendStreamingMessage(
+      type,
+      content,
+      // onStreamUpdate: Append chunk to the placeholder AI message
+      (chunk) => {
+        setConversation(prev => {
+          if (!prev) return prev;
+          const updatedMessages = prev.messages.map(msg =>
+            msg.id === aiMessagePlaceholder.id
+              ? { ...msg, content: msg.content + chunk }
+              : msg
+          );
+          return { ...prev, messages: updatedMessages };
+        });
+      },
+      // onError: Update placeholder with error message
+      (error) => {
+        console.error('Streaming error:', error);
+        setConversation(prev => {
+          if (!prev) return prev;
+          const updatedMessages = prev.messages.map(msg =>
+            msg.id === aiMessagePlaceholder.id
+              ? { ...msg, content: 'Error receiving response.', streaming: false }
+              : msg
+          );
+          return { ...prev, messages: updatedMessages };
+        });
+        setIsSendingMessage(false);
+        abortControllerRef.current = null; // Clear ref on error
+      },
+      // onClose: Finalize the AI message
+      () => {
+        setConversation(prev => {
+          if (!prev) return prev;
+          const updatedMessages = prev.messages.map(msg =>
+            msg.id === aiMessagePlaceholder.id
+              ? { ...msg, streaming: false } // Mark streaming as complete
+              : msg
+          );
+          return { ...prev, messages: updatedMessages };
+        });
+        setIsSendingMessage(false);
+        abortControllerRef.current = null; // Clear ref on close
+      }
+    );
   };
+
 
   const handleSave = () => {
     // In a real app, this would save the changes to the backend
@@ -132,7 +195,7 @@ const ConversationPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header title={`Edit ${typeName}`} />
-      
+
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
           <div className="mb-6">
@@ -144,7 +207,7 @@ const ConversationPage: React.FC = () => {
               Back to Project
             </button>
           </div>
-          
+
           {renderContent()}
         </div>
       </main>
