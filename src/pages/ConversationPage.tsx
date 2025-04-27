@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
-// Removed EventSourcePolyfill import
 import Header from '../components/Header';
 import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { Conversation, Message, ProjectDetails } from '../types';
-import { getConversationHistory, getProjectDetails } from '../mock/data'; // Removed sendMessage import
-import { sendStreamingMessage } from '../services/api'; // Added import for the new API function
+import { getConversationHistory, getProjectDetails } from '../mock/data';
+import { sendStreamingMessage } from '../services/api';
 
 const ConversationPage: React.FC = () => {
   const { projectId, type } = useParams<{ projectId: string; type: 'plan' | 'technicalSpecs' }>();
@@ -16,7 +15,7 @@ const ConversationPage: React.FC = () => {
   const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null); // Changed ref name and type
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const typeName = type === 'plan' ? 'Project Plan' : 'Technical Specifications';
 
@@ -27,7 +26,6 @@ const ConversationPage: React.FC = () => {
       try {
         setIsLoading(true);
 
-        // Fetch both conversation history and project details
         const [conversationData, projectData] = await Promise.all([
           getConversationHistory(projectId, type),
           getProjectDetails(projectId)
@@ -44,7 +42,6 @@ const ConversationPage: React.FC = () => {
 
     fetchData();
 
-    // Cleanup function to abort fetch on unmount or dependency change
     return () => {
       abortControllerRef.current?.abort();
     };
@@ -55,7 +52,6 @@ const ConversationPage: React.FC = () => {
 
     setIsSendingMessage(true);
 
-    // 1. Add user message optimistically
     const userMessage: Message = {
       id: `m-user-${Date.now()}`,
       content,
@@ -63,13 +59,12 @@ const ConversationPage: React.FC = () => {
       timestamp: new Date().toISOString(),
     };
 
-    // 2. Add a placeholder for the AI response
     const aiMessagePlaceholder: Message = {
       id: `m-ai-${Date.now()}`,
-      content: '', // Start with empty content
+      content: '',
       sender: 'ai',
       timestamp: new Date().toISOString(),
-      streaming: true, // Add a flag to indicate streaming
+      streaming: true,
     };
 
     setConversation(prev => {
@@ -82,14 +77,11 @@ const ConversationPage: React.FC = () => {
       };
     });
 
-    // Abort any existing request before starting a new one
     abortControllerRef.current?.abort();
 
-    // 3. Call the API function and store the AbortController
     abortControllerRef.current = sendStreamingMessage(
       type,
       content,
-      // onStreamUpdate: Append chunk to the placeholder AI message
       (chunk) => {
         setConversation(prev => {
           if (!prev) return prev;
@@ -101,7 +93,6 @@ const ConversationPage: React.FC = () => {
           return { ...prev, messages: updatedMessages };
         });
       },
-      // onError: Update placeholder with error message
       (error) => {
         console.error('Streaming error:', error);
         setConversation(prev => {
@@ -114,28 +105,26 @@ const ConversationPage: React.FC = () => {
           return { ...prev, messages: updatedMessages };
         });
         setIsSendingMessage(false);
-        abortControllerRef.current = null; // Clear ref on error
+        abortControllerRef.current = null;
       },
-      // onClose: Finalize the AI message
       () => {
         setConversation(prev => {
           if (!prev) return prev;
           const updatedMessages = prev.messages.map(msg =>
             msg.id === aiMessagePlaceholder.id
-              ? { ...msg, streaming: false } // Mark streaming as complete
+              ? { ...msg, streaming: false }
               : msg
           );
           return { ...prev, messages: updatedMessages };
         });
         setIsSendingMessage(false);
-        abortControllerRef.current = null; // Clear ref on close
+        abortControllerRef.current = null;
       }
     );
   };
 
 
   const handleSave = () => {
-    // In a real app, this would save the changes to the backend
     navigate(`/project/${projectId}`);
   };
 

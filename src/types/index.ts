@@ -30,7 +30,7 @@ export interface Message {
   content: string;
   sender: 'user' | 'ai';
   timestamp: string;
-  streaming?: boolean; // Add optional streaming flag
+  streaming?: boolean;
 }
 
 export interface Conversation {
