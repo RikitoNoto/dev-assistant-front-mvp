@@ -1,4 +1,4 @@
-type StreamCallback = (chunk: string) => void;
+type StreamCallback = (data: { message?: string; file?: string }) => void;
 type ErrorCallback = (error: any) => void;
 type CloseCallback = () => void;
 
@@ -43,31 +43,40 @@ export const sendStreamingMessage = (
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
+          // ストリーム終了時にバッファに残っているデータを処理
+          if (buffer.trim()) {
+            try {
+              const jsonData = JSON.parse(buffer.trim());
+              onStreamUpdate(jsonData);
+            } catch (e) {
+              console.error('Failed to parse final JSON chunk:', e, 'Chunk:', buffer.trim());
+              // Consider calling onError if partial data is unacceptable
+              // onError(`Failed to parse JSON: ${e}`);
+            }
+          }
           break;
         }
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
-        let boundary = buffer.indexOf('\n\n');
-        while (boundary !== -1) {
-          const message = buffer.substring(0, boundary);
-          buffer = buffer.substring(boundary + 2);
-          if (message.startsWith('data: ')) {
-            const data = message.substring(6).trim();
-            if (data) {
-              onStreamUpdate(data);
+
+        // 改行で区切られたJSONオブジェクトを処理
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          const jsonString = buffer.substring(0, newlineIndex).trim();
+          buffer = buffer.substring(newlineIndex + 1);
+
+          if (jsonString) {
+            try {
+              const jsonData = JSON.parse(jsonString);
+              onStreamUpdate(jsonData);
+            } catch (e) {
+              console.error('Failed to parse JSON chunk:', e, 'Chunk:', jsonString);
+              // Consider calling onError if partial data is unacceptable
+              // onError(`Failed to parse JSON: ${e}`);
             }
           }
-          boundary = buffer.indexOf('\n\n');
         }
       }
-      if (buffer.startsWith('data: ')) {
-          const data = buffer.substring(6).trim();
-          if (data) {
-              onStreamUpdate(data);
-          }
-      }
-
-
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Fetch aborted');

@@ -83,11 +83,13 @@ const ConversationPage: React.FC = () => {
       type,
       content,
       (chunk) => {
+        console.log('Received chunk:', chunk);
         setConversation(prev => {
           if (!prev) return prev;
+          if (!chunk.message) return prev;
           const updatedMessages = prev.messages.map(msg =>
             msg.id === aiMessagePlaceholder.id
-              ? { ...msg, content: msg.content + chunk }
+              ? { ...msg, content: msg.content + chunk.message }
               : msg
           );
           return { ...prev, messages: updatedMessages };
