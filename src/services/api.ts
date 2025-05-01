@@ -1,3 +1,4 @@
+import { Project } from '../types'; // Import Project type
 type StreamCallback = (data: { message?: string; file?: string }) => void;
 type ErrorCallback = (error: any) => void;
 type CloseCallback = () => void;
@@ -10,8 +11,8 @@ export const sendStreamingMessage = (
   onClose: CloseCallback
 ): AbortController => {
   const url = type === 'plan'
-    ? '/chat/plan/stream'
-    : '/chat/tech-spec/stream';
+    ? `/chat/plan/stream`
+    : `/chat/tech-spec/stream`;
 
   const controller = new AbortController();
   const signal = controller.signal;
@@ -92,4 +93,43 @@ export const sendStreamingMessage = (
   fetchData();
 
   return controller;
+};
+
+// Define the structure of the API response item
+interface ApiProject {
+  project_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Function to fetch projects from the API
+export const getProjects = async (): Promise<Project[]> => {
+  try {
+    const response = await fetch(`/projects`); // Use the correct endpoint
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const apiProjects: ApiProject[] = await response.json();
+
+    // Map API response to the frontend Project type
+    const projects: Project[] = apiProjects.map(apiProject => ({
+      id: apiProject.project_id,
+      name: apiProject.title,
+      description: '', // Provide a default empty string for description
+      createdAt: apiProject.created_at,
+      updatedAt: apiProject.updated_at,
+      // thumbnail is optional and not provided by the API, so it's omitted
+    }));
+
+    return projects;
+  } catch (error) {
+    console.error('Failed to fetch projects:', error);
+    // In a real app, you might want to handle this error more gracefully,
+    // e.g., by returning an empty array or showing an error message to the user.
+    return []; // Return empty array on error for now
+  }
 };

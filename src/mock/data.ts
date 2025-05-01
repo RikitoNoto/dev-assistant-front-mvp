@@ -1,31 +1,5 @@
-import { Project, ProjectDetails, Conversation } from '../types';
+import { Project, ProjectDetails, Conversation, Message } from '../types';
 
-export const projects: Project[] = [
-  {
-    id: '1',
-    name: 'E-commerce Platform',
-    description: 'A comprehensive e-commerce solution with product management, cart, and checkout.',
-    createdAt: '2025-01-15T12:00:00Z',
-    updatedAt: '2025-03-10T15:30:00Z',
-    thumbnail: 'https://images.pexels.com/photos/5632402/pexels-photo-5632402.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  },
-  {
-    id: '2',
-    name: 'Task Management App',
-    description: 'Kanban-style task management system with team collaboration features.',
-    createdAt: '2025-02-22T09:15:00Z',
-    updatedAt: '2025-03-15T11:45:00Z',
-    thumbnail: 'https://images.pexels.com/photos/7376/startup-photos.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  },
-  {
-    id: '3',
-    name: 'Social Media Dashboard',
-    description: 'Analytics dashboard for tracking performance across social media platforms.',
-    createdAt: '2025-03-05T14:20:00Z',
-    updatedAt: '2025-03-18T16:10:00Z',
-    thumbnail: 'https://images.pexels.com/photos/6804604/pexels-photo-6804604.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  }
-];
 
 export const projectDetails: Record<string, ProjectDetails> = {
   '1': {
@@ -469,13 +443,6 @@ export const conversations: Record<string, Record<string, Conversation>> = {
   }
 };
 
-export function getProjects(): Promise<Project[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(projects);
-    }, 500);
-  });
-}
 
 export function getProjectDetails(projectId: string): Promise<ProjectDetails | null> {
   return new Promise((resolve) => {
@@ -502,17 +469,17 @@ export function sendMessage(projectId: string, type: 'plan' | 'technicalSpecs', 
         sender: 'user',
         timestamp: new Date().toISOString()
       };
-      
+
       // In a real app, we would send this to the backend and get an AI response
       // For now, we'll simulate an AI response
-      
+
       const newAiMessage: Message = {
         id: `m${Date.now() + 1}`,
         content: `I've received your message about the ${type}. In a real application, this would be processed by an AI to provide a helpful response based on your input.`,
         sender: 'ai',
         timestamp: new Date(Date.now() + 1000).toISOString()
       };
-      
+
       // In a real app, both messages would be added to the conversation history
       // Here we're just returning the user message for simplicity
       resolve(newUserMessage);
@@ -531,7 +498,7 @@ export function createProject(name: string, description: string): Promise<Projec
         updatedAt: new Date().toISOString(),
         thumbnail: 'https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
       };
-      
+
       // In a real app, we would add this to the database
       // For now, we'll just return the new project
       resolve(newProject);

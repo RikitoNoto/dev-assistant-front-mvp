@@ -5,7 +5,8 @@ import Header from '../components/Header';
 import ProjectCard from '../components/ProjectCard';
 import NewProjectModal from '../components/NewProjectModal';
 import { Project } from '../types';
-import { getProjects, createProject } from '../mock/data';
+import { getProjects } from '../services/api';
+import { createProject } from '../mock/data';
 
 const HomePage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -37,7 +38,7 @@ const HomePage: React.FC = () => {
       const newProject = await createProject(name, description);
       setProjects((prev) => [...prev, newProject]);
       setIsModalOpen(false);
-      
+
       // Navigate to the new project
       navigate(`/project/${newProject.id}`);
     } catch (error) {
@@ -48,7 +49,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -68,7 +69,7 @@ const HomePage: React.FC = () => {
               </button>
             </div>
           </div>
-          
+
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
