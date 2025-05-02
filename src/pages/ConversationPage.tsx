@@ -4,18 +4,19 @@ import { ChevronLeft, Save } from 'lucide-react';
 import Header from '../components/Header';
 import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
-import { Conversation, Message, ProjectDetails } from '../types';
-import { getConversationHistory, getProjectDetails } from '../mock/data';
-import { sendStreamingMessage } from '../services/api';
+import { Conversation, Message } from '../types';
+import { getConversationHistory } from '../mock/data';
+import { sendStreamingMessage, getPlanDocument, getTechSpecDocument } from '../services/api';
 
 const ConversationPage: React.FC = () => {
   const { projectId, type } = useParams<{ projectId: string; type: 'plan' | 'technicalSpecs' }>();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(null);
+  const [documentContent, setDocumentContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const typeName = type === 'plan' ? 'Project Plan' : 'Technical Specifications';
 
@@ -25,16 +26,30 @@ const ConversationPage: React.FC = () => {
 
       try {
         setIsLoading(true);
+        setError(null); // Reset error state
 
-        const [conversationData, projectData] = await Promise.all([
-          getConversationHistory(projectId, type),
-          getProjectDetails(projectId)
+        const conversationDataPromise = getConversationHistory(projectId, type);
+        const documentPromise = type === 'plan'
+          ? getPlanDocument(projectId)
+          : getTechSpecDocument(projectId);
+
+        const [conversationData, docContent] = await Promise.all([
+          conversationDataPromise,
+          documentPromise
         ]);
 
         setConversation(conversationData);
-        setProjectDetails(projectData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
+        setDocumentContent(docContent);
+
+        if (docContent === null) {
+            console.warn(`${typeName} document not found.`);
+        }
+
+      } catch (err: any) {
+        console.error('Error fetching data:', err);
+        setError(err.message || `Failed to load ${typeName} data.`);
+        setConversation(null);
+        setDocumentContent(null);
       } finally {
         setIsLoading(false);
       }
@@ -45,7 +60,7 @@ const ConversationPage: React.FC = () => {
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [projectId, type]);
+  }, [projectId, type, typeName]);
 
   const handleSendMessage = (content: string) => {
     if (!projectId || !type || isSendingMessage) return;
@@ -95,8 +110,8 @@ const ConversationPage: React.FC = () => {
           return { ...prev, messages: updatedMessages };
         });
       },
-      (error) => {
-        console.error('Streaming error:', error);
+      (err) => {
+        console.error('Streaming error:', err);
         setConversation(prev => {
           if (!prev) return prev;
           const updatedMessages = prev.messages.map(msg =>
@@ -139,15 +154,15 @@ const ConversationPage: React.FC = () => {
       );
     }
 
-    if (!projectDetails) {
+    if (error) {
       return (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Project not found</p>
+        <div className="flex items-center justify-center h-64 bg-red-50 border border-red-200 rounded-lg p-4">
+           <p className="text-red-700">Error: {error}</p>
         </div>
       );
     }
 
-    const currentContent = type === 'plan' ? projectDetails.plan : projectDetails.technicalSpecs;
+    const currentContent = documentContent;
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-12rem)]">
@@ -162,7 +177,11 @@ const ConversationPage: React.FC = () => {
               Save Changes
             </button>
           </div>
-          <MarkdownRenderer content={currentContent} />
+          {currentContent !== null ? (
+             <MarkdownRenderer content={currentContent} />
+          ) : (
+             <p className="text-gray-500">{typeName} document not available.</p>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">

@@ -133,3 +133,45 @@ export const getProjects = async (): Promise<Project[]> => {
     return []; // Return empty array on error for now
   }
 };
+
+// Define the structure for document API responses
+interface DocumentResponse {
+  project_id: string;
+  content: string;
+}
+
+// Function to fetch the plan document from the API
+export const getPlanDocument = async (projectId: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`/documents/plan/${projectId}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const data: DocumentResponse = await response.json();
+    return data.content;
+  } catch (error) {
+    console.error(`Failed to fetch plan document for project ${projectId}:`, error);
+    return null; // Return null on error
+  }
+};
+
+// Function to fetch the technical specification document from the API
+export const getTechSpecDocument = async (projectId: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`/documents/tech-spec/${projectId}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const data: DocumentResponse = await response.json();
+    return data.content;
+  } catch (error) {
+    console.error(`Failed to fetch tech spec document for project ${projectId}:`, error);
+    return null; // Return null on error
+  }
+};

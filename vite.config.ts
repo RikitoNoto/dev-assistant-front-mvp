@@ -17,6 +17,13 @@ export default defineConfig({
         target: 'http://localhost:8888',
         changeOrigin: true,
       },
+      '/documents': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
+    watch: {
+      usePolling: true
     },
   },
 });
