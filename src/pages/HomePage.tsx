@@ -5,8 +5,7 @@ import Header from '../components/Header';
 import ProjectCard from '../components/ProjectCard';
 import NewProjectModal from '../components/NewProjectModal';
 import { Project } from '../types';
-import { getProjects } from '../services/api';
-import { createProject } from '../mock/data';
+import { getProjects, createProject } from '../services/api';
 
 const HomePage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -33,13 +32,12 @@ const HomePage: React.FC = () => {
     navigate(`/project/${projectId}`);
   };
 
-  const handleCreateProject = async (name: string, description: string) => {
+  const handleCreateProject = async (name: string) => {
     try {
-      const newProject = await createProject(name, description);
+      const newProject = await createProject(name);
       setProjects((prev) => [...prev, newProject]);
       setIsModalOpen(false);
 
-      // Navigate to the new project
       navigate(`/project/${newProject.id}`);
     } catch (error) {
       console.error('Error creating project:', error);

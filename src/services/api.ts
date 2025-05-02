@@ -134,6 +134,45 @@ export const getProjects = async (): Promise<Project[]> => {
   }
 };
 
+interface CreateProjectResponse {
+  project_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const createProject = async (title: string): Promise<Project> => {
+  try {
+    const response = await fetch(`/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const apiProject: CreateProjectResponse = await response.json();
+
+    const newProject: Project = {
+      id: apiProject.project_id,
+      name: apiProject.title,
+      description: '',
+      createdAt: apiProject.created_at,
+      updatedAt: apiProject.updated_at,
+    };
+
+    return newProject;
+  } catch (error) {
+    console.error('Failed to create project:', error);
+    throw error;
+  }
+};
+
 // Define the structure for document API responses
 interface DocumentResponse {
   project_id: string;

@@ -4,13 +4,13 @@ import { X } from 'lucide-react';
 interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateProject: (name: string, description: string) => void;
+  onCreateProject: (name: string) => void;
 }
 
-const NewProjectModal: React.FC<NewProjectModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onCreateProject 
+const NewProjectModal: React.FC<NewProjectModalProps> = ({
+  isOpen,
+  onClose,
+  onCreateProject
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -21,9 +21,9 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    
+
     setIsSubmitting(true);
-    onCreateProject(name, description);
+    onCreateProject(name);
     setIsSubmitting(false);
     setName('');
     setDescription('');
@@ -41,7 +41,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -57,7 +57,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
               required
             />
           </div>
-          
+
           <div className="mb-6">
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
               Description
@@ -71,7 +71,7 @@ const NewProjectModal: React.FC<NewProjectModalProps> = ({
               placeholder="Enter project description"
             />
           </div>
-          
+
           <div className="flex justify-end space-x-3">
             <button
               type="button"

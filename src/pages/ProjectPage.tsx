@@ -87,7 +87,6 @@ const ProjectPage: React.FC = () => {
                  <p className="text-gray-500">Plan document not available.</p>
               )}
             </div>
-            {/* Keep the button enabled even if content is null, to allow conversation */}
             <button
               onClick={() => handleNavigateToConversation('plan')}
               className="absolute top-4 right-4 p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -107,7 +106,6 @@ const ProjectPage: React.FC = () => {
                   <p className="text-gray-500">Technical specifications document not available.</p>
                )}
             </div>
-             {/* Keep the button enabled even if content is null, to allow conversation */}
             <button
               onClick={() => handleNavigateToConversation('technicalSpecs')}
               className="absolute top-4 right-4 p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
