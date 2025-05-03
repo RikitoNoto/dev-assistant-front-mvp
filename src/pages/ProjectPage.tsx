@@ -5,32 +5,48 @@ import Header from '../components/Header';
 import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
-import { ProjectDetails } from '../types';
-import { getProjectDetails } from '../mock/data';
+import { getPlanDocument, getTechSpecDocument } from '../services/api';
 
 const ProjectPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('plan');
-  const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(null);
+  const [planContent, setPlanContent] = useState<string | null>(null);
+  const [techSpecContent, setTechSpecContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProjectDetails = async () => {
+    const fetchAllData = async () => {
       if (!projectId) return;
-      
+
+      setIsLoading(true);
+      setError(null);
+
       try {
-        setIsLoading(true);
-        const data = await getProjectDetails(projectId);
-        setProjectDetails(data);
-      } catch (error) {
-        console.error('Error fetching project details:', error);
+        const [planData, techSpecData] = await Promise.all([
+          getPlanDocument(projectId),
+          getTechSpecDocument(projectId)
+        ]);
+
+        setPlanContent(planData);
+        setTechSpecContent(techSpecData);
+
+        if ( planData === null || techSpecData === null) {
+           console.warn("Some project data might be missing.");
+        }
+
+      } catch (err: any) {
+        console.error('Error fetching project data:', err);
+        setError(err.message || 'Failed to load project data.');
+        setPlanContent(null);
+        setTechSpecContent(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchProjectDetails();
+    fetchAllData();
   }, [projectId]);
 
   const handleTabChange = (tab: string) => {
@@ -50,20 +66,26 @@ const ProjectPage: React.FC = () => {
       );
     }
 
-    if (!projectDetails) {
+    if (error) {
       return (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Project not found</p>
+        <div className="flex items-center justify-center h-64 bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error: {error}</p>
         </div>
       );
     }
+
+
 
     switch (activeTab) {
       case 'plan':
         return (
           <div className="relative">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <MarkdownRenderer content={projectDetails.plan} />
+            <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
+              {planContent !== null ? (
+                <MarkdownRenderer content={planContent} />
+              ) : (
+                 <p className="text-gray-500">Plan document not available.</p>
+              )}
             </div>
             <button
               onClick={() => handleNavigateToConversation('plan')}
@@ -77,8 +99,12 @@ const ProjectPage: React.FC = () => {
       case 'specs':
         return (
           <div className="relative">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <MarkdownRenderer content={projectDetails.technicalSpecs} />
+            <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
+               {techSpecContent !== null ? (
+                 <MarkdownRenderer content={techSpecContent} />
+               ) : (
+                  <p className="text-gray-500">Technical specifications document not available.</p>
+               )}
             </div>
             <button
               onClick={() => handleNavigateToConversation('technicalSpecs')}
@@ -90,7 +116,13 @@ const ProjectPage: React.FC = () => {
           </div>
         );
       case 'tickets':
-        return <TicketsList tickets={projectDetails.tickets} />;
+         return [] ? (
+           <TicketsList tickets={[]} />
+         ) : (
+           <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
+             <p className="text-gray-500">Ticket information not available.</p>
+           </div>
+         );
       default:
         return null;
     }
@@ -98,8 +130,8 @@ const ProjectPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header title={projectDetails?.id ? `Project #${projectDetails.id}` : 'Project'} />
-      
+      <Header title={`Project title`} />
+
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
           <div className="mb-6">
@@ -111,9 +143,9 @@ const ProjectPage: React.FC = () => {
               Back to Projects
             </button>
           </div>
-          
+
           <ProjectTabs activeTab={activeTab} onTabChange={handleTabChange} />
-          
+
           <div className="mt-6">
             {renderTabContent()}
           </div>

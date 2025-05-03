@@ -9,11 +9,21 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/chat': {
-        target: 'http://localhost:8001',
+      '/projects': {
+        target: 'http://localhost:8888',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/chat/, '/chat'),
       },
+      '/chat': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+      '/documents': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
+    watch: {
+      usePolling: true
     },
   },
 });
