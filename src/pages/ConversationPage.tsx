@@ -97,6 +97,7 @@ const ConversationPage: React.FC = () => {
     abortControllerRef.current = sendStreamingMessage(
       type,
       content,
+      projectId,
       (chunk) => {
         console.log('Received chunk:', chunk);
         setConversation(prev => {

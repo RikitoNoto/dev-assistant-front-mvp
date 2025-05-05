@@ -6,6 +6,7 @@ type CloseCallback = () => void;
 export const sendStreamingMessage = (
   type: 'plan' | 'technicalSpecs',
   messageContent: string,
+  projectId: string,
   onStreamUpdate: StreamCallback,
   onError: ErrorCallback,
   onClose: CloseCallback
@@ -24,7 +25,7 @@ export const sendStreamingMessage = (
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageContent }),
+        body: JSON.stringify({ message: messageContent, project_id: projectId }),
         signal,
       });
 
@@ -43,39 +44,14 @@ export const sendStreamingMessage = (
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-          // ストリーム終了時にバッファに残っているデータを処理
-          if (buffer.trim()) {
-            try {
-              const jsonData = JSON.parse(buffer.trim());
-              onStreamUpdate(jsonData);
-            } catch (e) {
-              console.error('Failed to parse final JSON chunk:', e, 'Chunk:', buffer.trim());
-              // Consider calling onError if partial data is unacceptable
-              // onError(`Failed to parse JSON: ${e}`);
-            }
-          }
-          break;
-        }
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
-
-        // 改行で区切られたJSONオブジェクトを処理
-        let newlineIndex;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          const jsonString = buffer.substring(0, newlineIndex).trim();
-          buffer = buffer.substring(newlineIndex + 1);
-
-          if (jsonString) {
-            try {
-              const jsonData = JSON.parse(jsonString);
-              onStreamUpdate(jsonData);
-            } catch (e) {
-              console.error('Failed to parse JSON chunk:', e, 'Chunk:', jsonString);
-              // Consider calling onError if partial data is unacceptable
-              // onError(`Failed to parse JSON: ${e}`);
-            }
-          }
+        chunk.match(/{.*?}/gs)?.forEach((v)=>{
+          const json = JSON.parse(v);
+            onStreamUpdate({...json});
+        })
+        if (done) {
+          break;
         }
       }
     } catch (error: any) {
