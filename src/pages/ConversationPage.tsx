@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Save, Loader2 } from 'lucide-react';
+import { ChevronLeft, Save, Loader2, Check, X } from 'lucide-react';
+import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 import Header from '../components/Header';
 import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -18,7 +19,10 @@ const ConversationPage: React.FC = () => {
   const { projectId, type } = useParams<{ projectId: string; type: 'plan' | 'technicalSpecs' }>();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [documentContent, setDocumentContent] = useState<string | null>(null);
+  const [documentContent, setDocumentContent] = useState<string>('');
+  const [originalDocumentContent, setOriginalDocumentContent] = useState<string>('');
+  const [newDocumentContent, setNewDocumentContent] = useState<string>('');
+  const [showDiff, setShowDiff] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -35,7 +39,10 @@ const ConversationPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       setConversation(null);
-      setDocumentContent(null);
+      setDocumentContent('');
+      setOriginalDocumentContent('');
+      setNewDocumentContent('');
+      setShowDiff(false);
 
       try {
         const conversationDataPromise = getConversationHistory(projectId, type);
@@ -70,8 +77,10 @@ const ConversationPage: React.FC = () => {
           fetchError = fetchError ? `${fetchError}\n${docError}` : docError;
         }
 
+        const initialDocContent = fetchedDocContent ?? '';
         setConversation(fetchedConversation);
-        setDocumentContent(fetchedDocContent);
+        setDocumentContent(initialDocContent);
+        setOriginalDocumentContent(initialDocContent);
         if (fetchError) {
             setError(fetchError);
         }
@@ -80,7 +89,8 @@ const ConversationPage: React.FC = () => {
         console.error('Unexpected error during data fetching:', err);
         setError(err.message || 'An unexpected error occurred.');
         setConversation(null);
-        setDocumentContent(null);
+        setDocumentContent('');
+        setOriginalDocumentContent('');
       } finally {
         setIsLoading(false);
       }
@@ -93,7 +103,6 @@ const ConversationPage: React.FC = () => {
     };
   }, [projectId, type, typeName]);
 
-  // ファイルチャンクを初めて受信したかを追跡するためのRef
   const isFirstFileChunk = useRef(true);
   const handleSendMessage = (content: string) => {
     if (!projectId || !type || isSendingMessage) return;
@@ -155,12 +164,12 @@ const ConversationPage: React.FC = () => {
 
         if (chunk.file) {
           if (isFirstFileChunk.current) {
-            // 最初のファイルチャンクの場合、内容を置き換える
-            setDocumentContent(chunk.file);
-            isFirstFileChunk.current = false; // フラグを更新
+            setOriginalDocumentContent(documentContent);
+            setNewDocumentContent(chunk.file);
+            setShowDiff(true);
+            isFirstFileChunk.current = false;
           } else {
-            // 2回目以降のファイルチャンクの場合、追記する
-            setDocumentContent(prevDocContent => (prevDocContent || '') + chunk.file);
+            setNewDocumentContent(prev => prev + chunk.file);
           }
         }
       },
@@ -195,17 +204,18 @@ const ConversationPage: React.FC = () => {
     );
   };
 
-  const handleSave = async () => {
-    if (!projectId || !type || !documentContent || isSaving) return;
+  const handleSave = async (contentToSave?: string) => {
+    const finalContent = contentToSave ?? documentContent;
+    if (!projectId || !type || !finalContent || isSaving) return;
 
     setIsSaving(true);
     setSaveError(null);
 
     try {
       if (type === 'plan') {
-        await savePlanDocument(projectId, documentContent);
+        await savePlanDocument(projectId, finalContent);
       } else {
-        await saveTechSpecDocument(projectId, documentContent);
+        await saveTechSpecDocument(projectId, finalContent);
       }
     } catch (err: any) {
       console.error('Error saving document:', err);
@@ -213,6 +223,20 @@ const ConversationPage: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAcceptDiff = async () => {
+    const acceptedContent = newDocumentContent;
+    setDocumentContent(acceptedContent);
+    setOriginalDocumentContent(acceptedContent);
+    setNewDocumentContent('');
+    setShowDiff(false);
+    await handleSave(acceptedContent);
+  };
+
+  const handleRejectDiff = () => {
+    setNewDocumentContent('');
+    setShowDiff(false);
   };
 
   const renderContent = () => {
@@ -238,38 +262,54 @@ const ConversationPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-12rem)]">
         <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Current {typeName}</h2>
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !documentContent}
-              className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                isSaving || !documentContent
-                  ? 'bg-indigo-300 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
-              }`}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-1" />
-                  Save Changes
-                </>
-              )}
-            </button>
+             <h2 className="text-lg font-semibold text-gray-900">Current {typeName}</h2>
           </div>
-          {saveError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md">
-              Save Error: {saveError}
+          {(isSaving || saveError) && (
+            <div className={`mb-4 p-3 rounded-md border ${saveError ? 'bg-red-100 border-red-300 text-red-700' : 'bg-blue-100 border-blue-300 text-blue-700'}`}>
+              {isSaving && <><Loader2 className="h-4 w-4 mr-1 inline animate-spin" /> Saving...</>}
+              {saveError && `Save Error: ${saveError}`}
             </div>
           )}
-          {currentContent !== null ? (
+          {showDiff ? (
+            <div className="mt-4 border border-gray-300 rounded-md">
+              <div className="bg-gray-100 px-4 py-2 border-b border-gray-300 flex justify-between items-center">
+                <h3 className="text-md font-semibold text-gray-800">Suggested Changes</h3>
+                <div className="space-x-2">
+                  <button
+                    onClick={handleAcceptDiff}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Accept
+                  </button>
+                  <button
+                    onClick={handleRejectDiff}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Reject
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                <ReactDiffViewer
+                  oldValue={originalDocumentContent}
+                  newValue={newDocumentContent}
+                  splitView={true}
+                  compareMethod={DiffMethod.WORDS}
+                  styles={{
+                    diffContainer: { fontSize: '0.875rem' },
+                    gutter: { minWidth: '1rem' },
+                    line: { lineHeight: '1.5' },
+                  }}
+                  useDarkTheme={false}
+                />
+              </div>
+            </div>
+          ) : currentContent !== null && currentContent !== '' ? (
              <MarkdownRenderer content={currentContent} />
           ) : (
-             <p className="text-gray-500">{typeName} document not available.</p>
+             <p className="text-gray-500 mt-4">{typeName} document not available or empty.</p>
           )}
         </div>
 
