@@ -3,9 +3,13 @@ type StreamCallback = (data: { message?: string; file?: string }) => void;
 type ErrorCallback = (error: any) => void;
 type CloseCallback = () => void;
 
+// Define the structure for conversation history items
+type HistoryItem = { [key: string]: string };
+
 export const sendStreamingMessage = (
   type: 'plan' | 'technicalSpecs',
   messageContent: string,
+  history: HistoryItem[], // Add history parameter
   projectId: string,
   onStreamUpdate: StreamCallback,
   onError: ErrorCallback,
@@ -25,7 +29,7 @@ export const sendStreamingMessage = (
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageContent, project_id: projectId }),
+        body: JSON.stringify({ message: messageContent, history: history, project_id: projectId }), // Include history in the body
         signal,
       });
 
