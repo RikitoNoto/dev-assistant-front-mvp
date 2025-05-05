@@ -32,30 +32,53 @@ const ConversationPage: React.FC = () => {
     const fetchData = async () => {
       if (!projectId || !type) return;
 
-      try {
-        setIsLoading(true);
-        setError(null);
+      setIsLoading(true);
+      setError(null);
+      setConversation(null);
+      setDocumentContent(null);
 
+      try {
         const conversationDataPromise = getConversationHistory(projectId, type);
         const documentPromise = type === 'plan'
           ? getPlanDocument(projectId)
           : getTechSpecDocument(projectId);
 
-        const [conversationData, docContent] = await Promise.all([
+        const [conversationResult, documentResult] = await Promise.allSettled([
           conversationDataPromise,
           documentPromise
         ]);
 
-        setConversation(conversationData);
-        setDocumentContent(docContent);
+        let fetchedConversation: Conversation | null = null;
+        let fetchedDocContent: string | null = null;
+        let fetchError: string | null = null;
 
-        if (docContent === null) {
+        if (conversationResult.status === 'fulfilled') {
+          fetchedConversation = conversationResult.value;
+        } else {
+          console.error('Error fetching conversation history:', conversationResult.reason);
+          fetchError = `Failed to load conversation history. ${conversationResult.reason?.message || ''}`;
+        }
+
+        if (documentResult.status === 'fulfilled') {
+          fetchedDocContent = documentResult.value;
+          if (fetchedDocContent === null) {
             console.warn(`${typeName} document not found.`);
+          }
+        } else {
+          console.error(`Error fetching ${typeName} document:`, documentResult.reason);
+          const docError = `Failed to load ${typeName} document. ${documentResult.reason?.message || ''}`;
+          fetchError = fetchError ? `${fetchError}\n${docError}` : docError;
+        }
+
+        setConversation(fetchedConversation);
+        setDocumentContent(fetchedDocContent);
+        if (fetchError) {
+            setError(fetchError);
         }
 
       } catch (err: any) {
-        console.error('Error fetching data:', err);
-        setError(err.message || `Failed to load ${typeName} data.`);
+        console.error('Unexpected error during data fetching:', err);
+        setError(err.message || 'An unexpected error occurred.');
         setConversation(null);
         setDocumentContent(null);
       } finally {
@@ -74,6 +97,10 @@ const ConversationPage: React.FC = () => {
     if (!projectId || !type || isSendingMessage) return;
 
     setIsSendingMessage(true);
+
+    const history = conversation?.messages
+      ?.filter(msg => !msg.streaming)
+      .map(msg => ({ [msg.sender]: msg.content })) || [];
 
     const userMessage: Message = {
       id: `m-user-${Date.now()}`,
@@ -105,6 +132,7 @@ const ConversationPage: React.FC = () => {
     abortControllerRef.current = sendStreamingMessage(
       type,
       content,
+      history,
       projectId,
       (chunk) => {
         console.log('Received chunk:', chunk);
