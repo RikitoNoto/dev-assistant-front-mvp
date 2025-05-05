@@ -1,0 +1,28 @@
+# React Testing Library テストルール
+
+このプロジェクトにおけるReact Testing Libraryを用いたテストのルールを以下に定めます。
+
+## 基本方針
+
+1.  **ユーザー中心のテスト:** 静的な描画結果の確認よりも、ユーザーのアクション（ボタンクリック、フォーム入力など）とその結果（状態変化、API呼び出し、画面遷移など）を検証することに重点を置きます。React Testing Libraryの哲学に従い、ユーザーがコンポーネントをどのように利用するかを模倣するテストを作成します。
+2.  **実装詳細への非依存:** コンポーネントの内部状態やメソッドを直接テストするのではなく、ユーザーが観測可能なUIの振る舞いをテストします。これにより、リファクタリング耐性の高いテストを目指します。
+
+## テストの構成とヘルパー
+
+1.  **テストファイル配置:** テストファイルは`tests`ディレクトリ内に、`src`ディレクトリの構造をミラーリングする形で配置します（例: `src/pages/HomePage.tsx`のテストは`tests/pages/HomePage.test.tsx`）。
+2.  **テストランナー:** `vitest`を使用します。テスト環境は`jsdom`を利用します。
+3.  **ヘルパー関数 (`tests/test-utils.tsx`):**
+    *   **カスタム`render`関数:** テスト対象コンポーネントを必要なプロバイダー（例: `BrowserRouter`）でラップするカスタム`render`関数を提供します。テストファイルでは、このカスタム`render`を`@testing-library/react`の`render`の代わりに利用します。
+    *   **APIモック:** `vitest`の`vi.mock`を使用して、`./services/api`などのAPIモジュール全体をモックします。各テストケースでは、必要に応じて`mockResolvedValue`, `mockRejectedValue`などを用いてAPIの応答を制御します。
+4.  **テストの記述:**
+    *   `describe`, `it`, `expect`などの`vitest`のグローバル関数を使用します。
+    *   要素の選択には`screen`オブジェクトとセマンティックなクエリ（`getByRole`, `getByLabelText`, `findByText`など）を優先的に使用します。
+    *   ユーザー操作のシミュレーションには`@testing-library/user-event`を使用します。
+    *   非同期処理の待機には`waitFor`, `findBy*`クエリを使用します。
+
+## 設定ファイル
+
+*   **`vite.config.ts`:** `test`オプションを設定し、`globals: true`, `environment: 'jsdom'`, `setupFiles`などを指定します。
+*   **`tsconfig.app.json` (または関連するtsconfig):** `compilerOptions.types`に`"vitest/globals"`を追加し、TypeScriptがVitestの型を認識できるようにします。
+*   **`tests/setupTests.ts`:** `@testing-library/jest-dom`などのグローバルなセットアップを記述します。
+*   **`package.json`:** `scripts`に`"test": "vitest"`を追加します。
