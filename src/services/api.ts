@@ -110,6 +110,47 @@ export const getProjects = async (): Promise<Project[]> => {
   }
 };
 
+// Function to save the plan document via API
+export const savePlanDocument = async (projectId: string, content: string): Promise<void> => {
+  try {
+    const response = await fetch(`/documents/plan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ project_id: projectId, content: content }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to save plan document for project ${projectId}:`, error);
+    throw error;
+  }
+};
+
+// Function to save the technical specification document via API
+export const saveTechSpecDocument = async (projectId: string, content: string): Promise<void> => {
+  try {
+    const response = await fetch(`/documents/tech-spec`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ project_id: projectId, content: content }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to save tech spec document for project ${projectId}:`, error);
+    throw error;
+  }
+};
 interface CreateProjectResponse {
   project_id: string;
   title: string;
