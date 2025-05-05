@@ -10,8 +10,8 @@ import {
   sendStreamingMessage,
   getPlanDocument,
   getTechSpecDocument,
-  savePlanDocument, // 追加
-  saveTechSpecDocument // 追加
+  savePlanDocument,
+  saveTechSpecDocument
 } from '../services/api';
 
 const ConversationPage: React.FC = () => {
@@ -21,10 +21,10 @@ const ConversationPage: React.FC = () => {
   const [documentContent, setDocumentContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // 保存中状態を追加
-  const [saveError, setSaveError] = useState<string | null>(null); // 保存エラー状態を追加
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [error, setError] = useState<string | null>(null); // データ取得エラー
+  const [error, setError] = useState<string | null>(null);
 
   const typeName = type === 'plan' ? 'Project Plan' : 'Technical Specifications';
 
@@ -34,7 +34,7 @@ const ConversationPage: React.FC = () => {
 
       try {
         setIsLoading(true);
-        setError(null); // Reset error state
+        setError(null);
 
         const conversationDataPromise = getConversationHistory(projectId, type);
         const documentPromise = type === 'plan'
@@ -111,7 +111,6 @@ const ConversationPage: React.FC = () => {
         setConversation(prev => {
           if (!prev) return prev;
 
-          // Update message content if chunk.message exists
           if (chunk.message) {
             const updatedMessages = prev.messages.map(msg =>
               msg.id === aiMessagePlaceholder.id
@@ -120,18 +119,16 @@ const ConversationPage: React.FC = () => {
             );
             return { ...prev, messages: updatedMessages };
           }
-          return prev; // Return previous state if no message chunk
+          return prev;
         });
 
-        // Update document content if chunk.file exists
         if (chunk.file) {
           setDocumentContent(prevDocContent => {
-            // Append the new file chunk to the previous content
             return (prevDocContent || '') + chunk.file;
           });
         }
       },
-      (err: Error) => { // Add Error type to err parameter
+      (err: Error) => {
         console.error('Streaming error:', err);
         setConversation(prev => {
           if (!prev) return prev;
@@ -142,11 +139,10 @@ const ConversationPage: React.FC = () => {
           );
           return { ...prev, messages: updatedMessages };
         });
-        // Remove the duplicated error handler below
-        setIsSendingMessage(false); // Move these lines up from the removed block
-        abortControllerRef.current = null; // Move these lines up from the removed block
+        setIsSendingMessage(false);
+        abortControllerRef.current = null;
       },
-      // Removed the duplicate error handler that was here
+
       () => {
         setConversation(prev => {
           if (!prev) return prev;
@@ -209,7 +205,7 @@ const ConversationPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Current {typeName}</h2>
             <button
               onClick={handleSave}
-              disabled={isSaving || !documentContent} // 保存中またはコンテンツがない場合は無効化
+              disabled={isSaving || !documentContent}
               className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
                 isSaving || !documentContent
                   ? 'bg-indigo-300 cursor-not-allowed'
@@ -229,7 +225,7 @@ const ConversationPage: React.FC = () => {
               )}
             </button>
           </div>
-          {saveError && ( // 保存エラーメッセージを表示
+          {saveError && (
             <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md">
               Save Error: {saveError}
             </div>
