@@ -93,10 +93,13 @@ const ConversationPage: React.FC = () => {
     };
   }, [projectId, type, typeName]);
 
+  // ファイルチャンクを初めて受信したかを追跡するためのRef
+  const isFirstFileChunk = useRef(true);
   const handleSendMessage = (content: string) => {
     if (!projectId || !type || isSendingMessage) return;
 
     setIsSendingMessage(true);
+    isFirstFileChunk.current = true;
 
     const history = conversation?.messages
       ?.filter(msg => !msg.streaming)
@@ -151,9 +154,14 @@ const ConversationPage: React.FC = () => {
         });
 
         if (chunk.file) {
-          setDocumentContent(prevDocContent => {
-            return (prevDocContent || '') + chunk.file;
-          });
+          if (isFirstFileChunk.current) {
+            // 最初のファイルチャンクの場合、内容を置き換える
+            setDocumentContent(chunk.file);
+            isFirstFileChunk.current = false; // フラグを更新
+          } else {
+            // 2回目以降のファイルチャンクの場合、追記する
+            setDocumentContent(prevDocContent => (prevDocContent || '') + chunk.file);
+          }
         }
       },
       (err: Error) => {
