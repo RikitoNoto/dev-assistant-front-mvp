@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { vi } from 'vitest'; // vitestからviをインポート
 
 // APIモジュール全体をモック
-vi.mock('./services/api', () => ({
+vi.mock('../src/services/api', () => ({ // パスを ../src/services/api に更新
   getProjects: vi.fn(),
   createProject: vi.fn(),
   // 他に必要なAPI関数があればここに追加
@@ -27,7 +27,7 @@ export * from '@testing-library/react';
 export { customRender as render };
 
 // モック関数を使いやすくするためにエクスポート (オプション)
-// import { getProjects, createProject } from './services/api';
+// import { getProjects, createProject } from '../src/services/api'; // パスを ../src/services/api に更新
 // export const mockGetProjects = getProjects as vi.Mock;
 // export const mockCreateProject = createProject as vi.Mock;
 // 必要に応じて上記のようにモック関数をキャストしてエクスポートできます

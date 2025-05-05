@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { render } from '../test-utils'; // カスタムrenderをインポート
-import HomePage from './HomePage';
-import { getProjects, createProject } from '../services/api'; // モック対象をインポート
-import { Project } from '../types';
+import { render } from '../test-utils'; // パスを修正
+import HomePage from '../../src/pages/HomePage'; // パスを更新
+import { getProjects, createProject } from '../../src/services/api'; // パスを更新
+import { Project } from '../../src/types'; // パスを更新
 
 // モック関数を型付けして使いやすくする
 const mockGetProjects = getProjects as vi.Mock;
