@@ -102,16 +102,28 @@ const ConversationPage: React.FC = () => {
         console.log('Received chunk:', chunk);
         setConversation(prev => {
           if (!prev) return prev;
-          if (!chunk.message) return prev;
-          const updatedMessages = prev.messages.map(msg =>
-            msg.id === aiMessagePlaceholder.id
-              ? { ...msg, content: msg.content + chunk.message }
-              : msg
-          );
-          return { ...prev, messages: updatedMessages };
+
+          // Update message content if chunk.message exists
+          if (chunk.message) {
+            const updatedMessages = prev.messages.map(msg =>
+              msg.id === aiMessagePlaceholder.id
+                ? { ...msg, content: msg.content + chunk.message }
+                : msg
+            );
+            return { ...prev, messages: updatedMessages };
+          }
+          return prev; // Return previous state if no message chunk
         });
+
+        // Update document content if chunk.file exists
+        if (chunk.file) {
+          setDocumentContent(prevDocContent => {
+            // Append the new file chunk to the previous content
+            return (prevDocContent || '') + chunk.file;
+          });
+        }
       },
-      (err) => {
+      (err: Error) => { // Add Error type to err parameter
         console.error('Streaming error:', err);
         setConversation(prev => {
           if (!prev) return prev;
@@ -122,9 +134,11 @@ const ConversationPage: React.FC = () => {
           );
           return { ...prev, messages: updatedMessages };
         });
-        setIsSendingMessage(false);
-        abortControllerRef.current = null;
+        // Remove the duplicated error handler below
+        setIsSendingMessage(false); // Move these lines up from the removed block
+        abortControllerRef.current = null; // Move these lines up from the removed block
       },
+      // Removed the duplicate error handler that was here
       () => {
         setConversation(prev => {
           if (!prev) return prev;
