@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Save } from 'lucide-react';
+import { ChevronLeft, Save, Loader2 } from 'lucide-react';
 import Header from '../components/Header';
 import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { Conversation, Message } from '../types';
 import { getConversationHistory } from '../mock/data';
-import { sendStreamingMessage, getPlanDocument, getTechSpecDocument } from '../services/api';
+import {
+  sendStreamingMessage,
+  getPlanDocument,
+  getTechSpecDocument,
+  savePlanDocument,
+  saveTechSpecDocument
+} from '../services/api';
 
 const ConversationPage: React.FC = () => {
   const { projectId, type } = useParams<{ projectId: string; type: 'plan' | 'technicalSpecs' }>();
@@ -15,6 +21,8 @@ const ConversationPage: React.FC = () => {
   const [documentContent, setDocumentContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +34,7 @@ const ConversationPage: React.FC = () => {
 
       try {
         setIsLoading(true);
-        setError(null); // Reset error state
+        setError(null);
 
         const conversationDataPromise = getConversationHistory(projectId, type);
         const documentPromise = type === 'plan'
@@ -97,20 +105,30 @@ const ConversationPage: React.FC = () => {
     abortControllerRef.current = sendStreamingMessage(
       type,
       content,
+      projectId,
       (chunk) => {
         console.log('Received chunk:', chunk);
         setConversation(prev => {
           if (!prev) return prev;
-          if (!chunk.message) return prev;
-          const updatedMessages = prev.messages.map(msg =>
-            msg.id === aiMessagePlaceholder.id
-              ? { ...msg, content: msg.content + chunk.message }
-              : msg
-          );
-          return { ...prev, messages: updatedMessages };
+
+          if (chunk.message) {
+            const updatedMessages = prev.messages.map(msg =>
+              msg.id === aiMessagePlaceholder.id
+                ? { ...msg, content: msg.content + chunk.message }
+                : msg
+            );
+            return { ...prev, messages: updatedMessages };
+          }
+          return prev;
         });
+
+        if (chunk.file) {
+          setDocumentContent(prevDocContent => {
+            return (prevDocContent || '') + chunk.file;
+          });
+        }
       },
-      (err) => {
+      (err: Error) => {
         console.error('Streaming error:', err);
         setConversation(prev => {
           if (!prev) return prev;
@@ -124,6 +142,7 @@ const ConversationPage: React.FC = () => {
         setIsSendingMessage(false);
         abortControllerRef.current = null;
       },
+
       () => {
         setConversation(prev => {
           if (!prev) return prev;
@@ -140,9 +159,24 @@ const ConversationPage: React.FC = () => {
     );
   };
 
+  const handleSave = async () => {
+    if (!projectId || !type || !documentContent || isSaving) return;
 
-  const handleSave = () => {
-    navigate(`/project/${projectId}`);
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      if (type === 'plan') {
+        await savePlanDocument(projectId, documentContent);
+      } else {
+        await saveTechSpecDocument(projectId, documentContent);
+      }
+    } catch (err: any) {
+      console.error('Error saving document:', err);
+      setSaveError(err.message || `Failed to save ${typeName}.`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const renderContent = () => {
@@ -171,12 +205,31 @@ const ConversationPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Current {typeName}</h2>
             <button
               onClick={handleSave}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isSaving || !documentContent}
+              className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                isSaving || !documentContent
+                  ? 'bg-indigo-300 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              }`}
             >
-              <Save className="h-4 w-4 mr-1" />
-              Save Changes
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-1" />
+                  Save Changes
+                </>
+              )}
             </button>
           </div>
+          {saveError && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md">
+              Save Error: {saveError}
+            </div>
+          )}
           {currentContent !== null ? (
              <MarkdownRenderer content={currentContent} />
           ) : (
