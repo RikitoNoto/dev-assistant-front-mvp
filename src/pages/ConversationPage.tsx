@@ -7,13 +7,17 @@ import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { Conversation, Message } from '../types';
 import { getConversationHistory } from '../mock/data';
+// Import individual API functions and the ApiFunctions type
 import {
+  ApiFunctions,
   sendStreamingMessage,
   getPlanDocument,
   getTechSpecDocument,
   savePlanDocument,
   saveTechSpecDocument
 } from '../services/api';
+import { Chatbot, PlanChatbot, TechSpecChatbot } from '../models/chatbot'; // Import Chatbot models
+import { DocumentModel, PlanDocumentModel, TechSpecDocumentModel } from '../models/document'; // Import Document models
 
 const ConversationPage: React.FC = () => {
   const { projectId, type } = useParams<{ projectId: string; type: 'plan' | 'technicalSpecs' }>();
@@ -29,12 +33,44 @@ const ConversationPage: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // State for model instances
+  const [chatbot, setChatbot] = useState<Chatbot | null>(null);
+  const [documentModel, setDocumentModel] = useState<DocumentModel | null>(null);
 
   const typeName = type === 'plan' ? 'Project Plan' : 'Technical Specifications';
 
+  // Effect to initialize models based on projectId and type
+  useEffect(() => {
+    if (projectId && type) {
+      // Construct the required API function objects directly from imports
+      const chatApiFuncs: Pick<ApiFunctions, 'sendStreamingMessage'> = {
+        sendStreamingMessage // Use the imported function directly
+      };
+      const docApiFuncs: Pick<ApiFunctions, 'getPlanDocument' | 'getTechSpecDocument' | 'savePlanDocument' | 'saveTechSpecDocument'> = {
+        getPlanDocument,    // Use the imported function directly
+        getTechSpecDocument, // Use the imported function directly
+        savePlanDocument,   // Use the imported function directly
+        saveTechSpecDocument // Use the imported function directly
+      };
+
+      if (type === 'plan') {
+        setChatbot(new PlanChatbot(projectId, chatApiFuncs));
+        setDocumentModel(new PlanDocumentModel(projectId, docApiFuncs));
+      } else {
+        setChatbot(new TechSpecChatbot(projectId, chatApiFuncs));
+        setDocumentModel(new TechSpecDocumentModel(projectId, docApiFuncs));
+      }
+    } else {
+      setChatbot(null);
+      setDocumentModel(null);
+    }
+  }, [projectId, type]);
+
+
   useEffect(() => {
     const fetchData = async () => {
-      if (!projectId || !type) return;
+      // Ensure models are initialized before fetching data
+      if (!projectId || !type || !documentModel) return;
 
       setIsLoading(true);
       setError(null);
@@ -45,14 +81,15 @@ const ConversationPage: React.FC = () => {
       setShowDiff(false);
 
       try {
+        // Fetch conversation history (remains the same for now)
         const conversationDataPromise = getConversationHistory(projectId, type);
-        const documentPromise = type === 'plan'
-          ? getPlanDocument(projectId)
-          : getTechSpecDocument(projectId);
+        // Fetch document using the model instance
+        const documentPromise = documentModel.getDocument();
 
+        // Use Promise.allSettled to handle potential errors in either fetch
         const [conversationResult, documentResult] = await Promise.allSettled([
           conversationDataPromise,
-          documentPromise
+          documentPromise // documentPromise is now a direct promise from the model
         ]);
 
         let fetchedConversation: Conversation | null = null;
@@ -95,17 +132,20 @@ const ConversationPage: React.FC = () => {
         setIsLoading(false);
       }
     };
-
-    fetchData();
+    // Add documentModel to dependency array
+    if (documentModel) {
+        fetchData();
+    }
 
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [projectId, type, typeName]);
+  }, [projectId, type, typeName, documentModel]); // Add documentModel dependency
 
   const isFirstFileChunk = useRef(true);
   const handleSendMessage = (content: string) => {
-    if (!projectId || !type || isSendingMessage) return;
+    // Ensure chatbot model is initialized
+    if (!projectId || !type || isSendingMessage || !chatbot) return;
 
     setIsSendingMessage(true);
     isFirstFileChunk.current = true;
@@ -141,12 +181,13 @@ const ConversationPage: React.FC = () => {
 
     abortControllerRef.current?.abort();
 
-    abortControllerRef.current = sendStreamingMessage(
+    // Use the chatbot model instance to send the message
+    abortControllerRef.current = chatbot.sendMessage(
       type,
       content,
       history,
-      projectId,
-      (chunk) => {
+      // projectId is handled internally by the model instance
+      (chunk) => { // onChunk callback
         console.log('Received chunk:', chunk);
         setConversation(prev => {
           if (!prev) return prev;
@@ -200,23 +241,21 @@ const ConversationPage: React.FC = () => {
         });
         setIsSendingMessage(false);
         abortControllerRef.current = null;
-      }
+      } // onClose callback
     );
   };
 
   const handleSave = async (contentToSave?: string) => {
     const finalContent = contentToSave ?? documentContent;
-    if (!projectId || !type || !finalContent || isSaving) return;
+    // Ensure documentModel is initialized
+    if (!projectId || !type || !finalContent || isSaving || !documentModel) return;
 
     setIsSaving(true);
     setSaveError(null);
 
     try {
-      if (type === 'plan') {
-        await savePlanDocument(projectId, finalContent);
-      } else {
-        await saveTechSpecDocument(projectId, finalContent);
-      }
+      // Use the document model instance to save the document
+      await documentModel.saveDocument(finalContent);
     } catch (err: any) {
       console.error('Error saving document:', err);
       setSaveError(err.message || `Failed to save ${typeName}.`);

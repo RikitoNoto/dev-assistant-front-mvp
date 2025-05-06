@@ -13,7 +13,9 @@
 2.  **テストランナー:** `vitest`を使用します。テスト環境は`jsdom`を利用します。
 3.  **ヘルパー関数 (`tests/test-utils.tsx`):**
     *   **カスタム`render`関数:** テスト対象コンポーネントを必要なプロバイダー（例: `BrowserRouter`）でラップするカスタム`render`関数を提供します。テストファイルでは、このカスタム`render`を`@testing-library/react`の`render`の代わりに利用します。
-    *   **APIモック:** `vitest`の`vi.mock`を使用して、`./services/api`などのAPIモジュール全体をモックします。各テストケースでは、必要に応じて`mockResolvedValue`, `mockRejectedValue`などを用いてAPIの応答を制御します。
+    *   **API/モデルモック:**
+        *   **モデルクラス (`src/models/*`) を利用するコンポーネントの場合:** コンポーネントはモデルクラスのインスタンスと対話します。テストでは、これらのモデルクラス (`Chatbot`, `DocumentModel` など) を `vi.mock` でモックし、そのメソッド (`sendMessage`, `getDocument`, `saveDocument` など) の挙動を制御します。コンポーネントのテストでは、`./services/api` を直接モックする必要はありません。
+        *   **API関数 (`src/services/api`) を直接利用する場合 (またはモデルクラス自体のテスト):** `vitest`の`vi.mock`を使用して、`./services/api` モジュール全体または個別の関数をモックします。各テストケースでは、必要に応じて`mockResolvedValue`, `mockRejectedValue`などを用いてAPIの応答を制御します。
 4.  **テストの記述:**
     *   `describe`, `it`, `expect`などの`vitest`のグローバル関数を使用します。
     *   要素の選択には`screen`オブジェクトとセマンティックなクエリ（`getByRole`, `getByLabelText`, `findByText`など）を優先的に使用します。
@@ -26,3 +28,7 @@
 *   **`tsconfig.app.json` (または関連するtsconfig):** `compilerOptions.types`に`"vitest/globals"`を追加し、TypeScriptがVitestの型を認識できるようにします。
 *   **`tests/setupTests.ts`:** `@testing-library/jest-dom`などのグローバルなセットアップを記述します。
 *   **`package.json`:** `scripts`に`"test": "vitest"`を追加します。
+
+## 実装ガイドライン
+
+1.  **モデルクラスの利用:** API呼び出しや関連するビジネスロジックは、可能な限り `src/models/` ディレクトリ内のモデルクラス（例: `Chatbot`, `DocumentModel`）にカプセル化します。コンポーネントはこれらのモデルクラスのインスタンスを介してデータの取得、更新、操作を行います。これにより、コンポーネントの責務をUIに集中させ、ロジックの再利用性とテスト容易性を高めます。

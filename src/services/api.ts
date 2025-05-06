@@ -1,15 +1,23 @@
 import { Project } from '../types'; // Import Project type
+
+export interface ApiFunctions {
+  sendStreamingMessage: typeof sendStreamingMessage;
+  getPlanDocument: typeof getPlanDocument;
+  getTechSpecDocument: typeof getTechSpecDocument;
+  savePlanDocument: typeof savePlanDocument;
+  saveTechSpecDocument: typeof saveTechSpecDocument;
+}
+
 type StreamCallback = (data: { message?: string; file?: string }) => void;
 type ErrorCallback = (error: any) => void;
 type CloseCallback = () => void;
 
-// Define the structure for conversation history items
 type HistoryItem = { [key: string]: string };
 
 export const sendStreamingMessage = (
   type: 'plan' | 'technicalSpecs',
   messageContent: string,
-  history: HistoryItem[], // Add history parameter
+  history: HistoryItem[],
   projectId: string,
   onStreamUpdate: StreamCallback,
   onError: ErrorCallback,
@@ -29,7 +37,7 @@ export const sendStreamingMessage = (
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageContent, history: history, project_id: projectId }), // Include history in the body
+        body: JSON.stringify({ message: messageContent, history: history, project_id: projectId }),
         signal,
       });
 
@@ -83,10 +91,9 @@ interface ApiProject {
   updated_at: string;
 }
 
-// Function to fetch projects from the API
 export const getProjects = async (): Promise<Project[]> => {
   try {
-    const response = await fetch(`/projects`); // Use the correct endpoint
+    const response = await fetch(`/projects`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -95,26 +102,21 @@ export const getProjects = async (): Promise<Project[]> => {
 
     const apiProjects: ApiProject[] = await response.json();
 
-    // Map API response to the frontend Project type
     const projects: Project[] = apiProjects.map(apiProject => ({
       id: apiProject.project_id,
       name: apiProject.title,
-      description: '', // Provide a default empty string for description
+      description: '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
-      // thumbnail is optional and not provided by the API, so it's omitted
     }));
 
     return projects;
   } catch (error) {
     console.error('Failed to fetch projects:', error);
-    // In a real app, you might want to handle this error more gracefully,
-    // e.g., by returning an empty array or showing an error message to the user.
-    return []; // Return empty array on error for now
+    return [];
   }
 };
 
-// Function to save the plan document via API
 export const savePlanDocument = async (projectId: string, content: string): Promise<void> => {
   try {
     const response = await fetch(`/documents/plan`, {
@@ -135,7 +137,6 @@ export const savePlanDocument = async (projectId: string, content: string): Prom
   }
 };
 
-// Function to save the technical specification document via API
 export const saveTechSpecDocument = async (projectId: string, content: string): Promise<void> => {
   try {
     const response = await fetch(`/documents/tech-spec`, {
@@ -200,7 +201,6 @@ interface DocumentResponse {
   content: string;
 }
 
-// Function to fetch the plan document from the API
 export const getPlanDocument = async (projectId: string): Promise<string | null> => {
   try {
     const response = await fetch(`/documents/plan/${projectId}`);
@@ -214,11 +214,10 @@ export const getPlanDocument = async (projectId: string): Promise<string | null>
     return data.content;
   } catch (error) {
     console.error(`Failed to fetch plan document for project ${projectId}:`, error);
-    return null; // Return null on error
+    return null;
   }
 };
 
-// Function to fetch the technical specification document from the API
 export const getTechSpecDocument = async (projectId: string): Promise<string | null> => {
   try {
     const response = await fetch(`/documents/tech-spec/${projectId}`);
@@ -232,6 +231,6 @@ export const getTechSpecDocument = async (projectId: string): Promise<string | n
     return data.content;
   } catch (error) {
     console.error(`Failed to fetch tech spec document for project ${projectId}:`, error);
-    return null; // Return null on error
+    return null;
   }
 };
