@@ -1,11 +1,11 @@
-import { Message } from '../types';
+import { Message, Ticket } from '../types'; // Added Ticket
 import {
   sendStreamingMessage,
   ApiFunctions
 } from '../services/api';
 
 
-type StreamCallback = (chunk: { message?: string; file?: string }) => void;
+type StreamCallback = (chunk: { message?: string; file?: string; issues?: Ticket[] }) => void; // Added issues to StreamCallback
 type ErrorCallback = (error: Error) => void;
 type CompletionCallback = () => void;
 
@@ -35,7 +35,7 @@ export abstract class Chatbot {
    * @returns AbortController インスタンス
    */
   public sendMessage(
-    type: 'plan' | 'technicalSpecs',
+    type: 'plan' | 'technicalSpecs' | 'issue', // Added 'issue' type
     messageContent: string,
     history: Array<{ [sender: string]: string }>,
     onChunk: StreamCallback,
@@ -68,6 +68,15 @@ export class PlanChatbot extends Chatbot {
  * Technical Specifications 用チャットボット (メッセージ送信のみ)
  */
 export class TechSpecChatbot extends Chatbot {
+  constructor(projectId: string, apiFunctions: Pick<ApiFunctions, 'sendStreamingMessage'>) {
+    super(projectId, apiFunctions);
+  }
+}
+
+/**
+ * Issue 用チャットボット (メッセージ送信のみ)
+ */
+export class IssueChatbot extends Chatbot {
   constructor(projectId: string, apiFunctions: Pick<ApiFunctions, 'sendStreamingMessage'>) {
     super(projectId, apiFunctions);
   }

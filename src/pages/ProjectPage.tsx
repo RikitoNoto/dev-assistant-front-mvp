@@ -74,6 +74,10 @@ const ProjectPage: React.FC = () => {
       );
     }
 
+    const handleNavigateToConversation = (type: 'plan' | 'technicalSpecs' | 'tickets') => {
+      navigate(`/project/${projectId}/conversation/${type}`);
+    };
+
 
 
     switch (activeTab) {
@@ -116,11 +120,18 @@ const ProjectPage: React.FC = () => {
           </div>
         );
       case 'tickets':
-         return [] ? (
-           <TicketsList tickets={[]} />
-         ) : (
-           <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
-             <p className="text-gray-500">Ticket information not available.</p>
+         return (
+           <div className="relative">
+             <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
+               <p className="text-gray-500">Ticket information not available.</p>
+             </div>
+             <button
+               onClick={() => handleNavigateToConversation('tickets')}
+               className="absolute top-4 right-4 p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+               title="Edit in conversation"
+             >
+               <MessageSquare className="h-5 w-5" />
+             </button>
            </div>
          );
       default:

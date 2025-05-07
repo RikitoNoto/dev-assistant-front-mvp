@@ -452,7 +452,7 @@ export function getProjectDetails(projectId: string): Promise<ProjectDetails | n
   });
 }
 
-export function getConversationHistory(projectId: string, type: 'plan' | 'technicalSpecs'): Promise<Conversation | null> {
+export function getConversationHistory(projectId: string, type: 'plan' | 'technicalSpecs' | 'issue'): Promise<Conversation | null> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve(conversations[projectId]?.[type] || null);
@@ -504,4 +504,6 @@ export function createProject(name: string, description: string): Promise<Projec
       resolve(newProject);
     }, 800);
   });
-}
+};
+
+const projects: Project[] = [];
