@@ -1,8 +1,5 @@
-export interface Issue {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
+export interface Issue extends Ticket {
+  priority: NonNullable<Ticket['priority']>; // 'low' | 'medium' | 'high'
 }
 
 export interface Conversation {
@@ -27,6 +24,7 @@ export interface Ticket {
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   assignee?: string;
   comments: Comment[];
+  priority: 'low' | 'medium' | 'high';
 }
 
 export interface Comment {

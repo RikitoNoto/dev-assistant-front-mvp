@@ -1,51 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams} from 'react-router-dom';
 import Header from '../components/Header';
+import TicketsList from '../components/TicketsList';
+import ChatInterface from '../components/ChatInterface';
 import EditIssueModal from '../components/EditIssueModal';
+import { Ticket, Message, Issue } from '../types';
+import { getIssues, sendStreamingMessage } from '../services/api';
 
-interface Issue {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
+interface IssueTrackerPageProps {
+  projectId: string;
 }
 
-const IssueTrackerPage: React.FC = () => {
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [newIssue, setNewIssue] = useState<Issue>({
-    id: '',
-    title: '',
-    description: '',
-    priority: 'medium',
-  });
-  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
+const IssueTrackerPage: React.FC<IssueTrackerPageProps> = () => {
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewIssue(prev => ({ ...prev, [name]: value }));
+  const { projectId } = useParams<{ projectId: string;}>() ;
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [editingIssue, setEditingIssue] = useState<Ticket | null>(null);
+
+  useEffect(() => {
+    const fetchTickets = async () => {
+      try {
+        if (!projectId) return;
+        const fetchedTickets = await getIssues(projectId);
+        setTickets((fetchedTickets || []).map(ticket => ({
+          ...ticket,
+          priority: ticket.priority || 'medium'
+        })));
+      } catch (error) {
+        console.error('Failed to fetch tickets:', error);
+      }
+    };
+
+    fetchTickets();
+  }, [projectId]);
+
+  const handleChatSubmit = (message: string) => {
+    if (!projectId) return;
+    setIsLoading(true);
+
+    // ユーザーのメッセージを追加
+    const userMessage: Message = {
+      id: `message-${Date.now()}`,
+      content: message,
+      sender: 'user',
+      timestamp: new Date().toISOString()
+    };
+    setChatMessages(prev => [...prev, userMessage]);
+
+    // AIとの通信を開始
+    const controller = sendStreamingMessage(
+      'issue',
+      message,
+      chatMessages.map(msg => ({ [msg.id]: msg.content })),
+      projectId,
+      (data) => {
+        if (data.message) {
+          setChatMessages(prev => [...prev, {
+            id: `message-${Date.now()}`,
+            content: data.message,
+            sender: 'ai',
+            timestamp: new Date().toISOString()
+          } as Message]);
+        }
+        if (data.issues) {
+          setTickets(data.issues);
+        }
+      },
+      (error) => {
+        console.error('AIとの通信エラー:', error);
+      },
+      () => {
+        setIsLoading(false);
+      }
+    );
+
+    // AIとの通信をキャンセルできるように
+    return () => {
+      controller.abort();
+    };
   };
 
-  const handlePriorityChange = (priority: 'low' | 'medium' | 'high') => {
-    setNewIssue(prev => ({ ...prev, priority }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newIssueId = `issue-${Date.now()}`;
-    const newIssueData: Issue = { ...newIssue, id: newIssueId };
-    setIssues(prev => [...prev, newIssueData]);
-    setNewIssue({ id: '', title: '', description: '', priority: 'medium' });
-  };
-  const handleEditIssue = (issue: Issue) => {
-    setEditingIssue(issue);
-  };
-
+  // チケット編集の保存処理
   const handleSaveEditedIssue = (updatedIssue: Issue) => {
-    setIssues((prevIssues: Issue[]) =>
-      prevIssues.map(issue =>
-        issue.id === updatedIssue.id ? updatedIssue : issue
+    setTickets(prev => 
+      prev.map(ticket => 
+        ticket.id === updatedIssue.id ? { 
+          ...ticket, 
+          ...updatedIssue
+        } : ticket
       )
     );
     setEditingIssue(null);
+  };
+
+  const handleEditIssue = (ticket: Ticket) => {
+    setEditingIssue(ticket);
   };
 
   return (
@@ -53,131 +104,21 @@ const IssueTrackerPage: React.FC = () => {
       <Header title="Issue Tracker" />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 sm:px-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* チケットリスト */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New Issue</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={newIssue.title}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={newIssue.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Priority</label>
-                <div className="mt-1">
-                  <div className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      id="priority-low"
-                      name="priority"
-                      value="low"
-                      checked={newIssue.priority === 'low'}
-                      onChange={() => handlePriorityChange('low')}
-                      className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                    />
-                    <label htmlFor="priority-low" className="ml-3 block text-sm font-medium text-gray-700">
-                      Low
-                    </label>
-                  </div>
-                  <div className="inline-flex items-center ml-4">
-                    <input
-                      type="radio"
-                      id="priority-medium"
-                      name="priority"
-                      value="medium"
-                      checked={newIssue.priority === 'medium'}
-                      onChange={() => handlePriorityChange('medium')}
-                      className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                    />
-                    <label htmlFor="priority-medium" className="ml-3 block text-sm font-medium text-gray-700">
-                      Medium
-                    </label>
-                  </div>
-                  <div className="inline-flex items-center ml-4">
-                    <input
-                      type="radio"
-                      id="priority-high"
-                      name="priority"
-                      value="high"
-                      checked={newIssue.priority === 'high'}
-                      onChange={() => handlePriorityChange('high')}
-                      className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                    />
-                    <label htmlFor="priority-high" className="ml-3 block text-sm font-medium text-gray-700">
-                      High
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Create Issue
-              </button>
-            </form>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Tickets</h2>
+            <TicketsList tickets={tickets} />
           </div>
 
-          <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Existing Issues</h2>
-            {issues.length === 0 ? (
-              <p className="text-gray-500">No issues created yet.</p>
-            ) : (
-              <ul className="divide-y divide-gray-200">
-                {issues.map(issue => (
-                  <li key={issue.id} className="py-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900">{issue.title}</h3>
-                        <p className="text-sm text-gray-500">{issue.description}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center space-x-2">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              issue.priority === 'low'
-                                ? 'bg-green-100 text-green-800'
-                                : issue.priority === 'medium'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {issue.priority}
-                          </span>
-                          <button
-                            onClick={() => handleEditIssue(issue)}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+          {/* AIとの会話画面 */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Chat with AI</h2>
+            <ChatInterface
+              messages={chatMessages}
+              onSendMessage={handleChatSubmit}
+              isLoading={isLoading}
+            />
           </div>
 
           {editingIssue && (
@@ -194,3 +135,9 @@ const IssueTrackerPage: React.FC = () => {
 };
 
 export default IssueTrackerPage;
+
+// AIからのストリームデータの型定義
+interface StreamData {
+  message?: string;
+  issues?: Ticket[];
+}
