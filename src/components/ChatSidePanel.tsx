@@ -11,7 +11,7 @@ interface ChatSidePanelProps {
   onClose: () => void;
   projectId: string;
   type: 'plan' | 'technicalSpecs';
-  onDiffChange?: (showDiff: boolean, originalContent: string, newContent: string) => void;
+  onDiffChange?: (showDiff: boolean, originalContent: string, newContent: string,isFirstChunk: boolean) => void;
 }
 
 const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectId, type, onDiffChange }) => {
