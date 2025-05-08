@@ -1,28 +1,12 @@
-export interface Project {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-  thumbnail?: string;
+export interface Issue extends Ticket {
+  priority: NonNullable<Ticket['priority']>; // 'low' | 'medium' | 'high'
 }
 
-export interface ProjectDetails {
+export interface Conversation {
   id: string;
-  plan: string;
-  technicalSpecs: string;
-  tickets: Ticket[];
-}
-
-export interface Ticket {
-  id: string;
-  title: string;
-  description: string;
-  status: 'todo' | 'in-progress' | 'review' | 'done';
-  priority: 'low' | 'medium' | 'high';
-  assignee?: string;
-  createdAt: string;
-  updatedAt: string;
+  projectId: string;
+  type: 'plan' | 'technicalSpecs';
+  messages: Message[];
 }
 
 export interface Message {
@@ -33,9 +17,19 @@ export interface Message {
   streaming?: boolean;
 }
 
-export interface Conversation {
+export interface Ticket {
   id: string;
-  projectId: string;
-  type: 'plan' | 'technicalSpecs';
-  messages: Message[];
+  title: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  assignee?: string;
+  comments: Comment[];
+  priority: 'low' | 'medium' | 'high';
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  author: string;
+  timestamp: string;
 }

@@ -3,10 +3,16 @@ import {
   getTechSpecDocument,
   savePlanDocument,
   saveTechSpecDocument,
+  getIssues,      // Added for issues
+  saveIssues,     // Added for issues
   ApiFunctions
 } from '../services/api';
+import { Ticket } from '../types'; // Added Ticket import
 
 type DocumentApiFunctions = Pick<ApiFunctions, 'getPlanDocument' | 'getTechSpecDocument' | 'savePlanDocument' | 'saveTechSpecDocument'>;
+
+// API functions specific to IssueDocumentModel
+type IssueModelApiFunctions = Pick<ApiFunctions, 'getIssues' | 'saveIssues'>;
 
 /**
  * ドキュメント操作の基本機能を提供する抽象クラス
@@ -103,6 +109,50 @@ export class TechSpecDocumentModel extends DocumentModel {
 export const defaultDocumentApiFunctions: DocumentApiFunctions = {
     getPlanDocument,
     getTechSpecDocument,
-    savePlanDocument,
-    saveTechSpecDocument
+  savePlanDocument,
+  saveTechSpecDocument
 };
+
+/**
+ * Model for managing issues (tickets)
+ */
+export class IssueModel {
+  protected projectId: string;
+  protected api: IssueModelApiFunctions;
+
+  constructor(projectId: string, apiFunctions: IssueModelApiFunctions) {
+    if (!projectId) {
+      throw new Error("Project ID is required.");
+    }
+    this.projectId = projectId;
+    this.api = apiFunctions;
+  }
+
+  /**
+   * Fetches the list of issues for the project.
+   * @returns A promise that resolves to an array of Tickets or null if an error occurs.
+   */
+  public async getIssuesList(): Promise<Ticket[] | null> {
+    try {
+      const issues = await this.api.getIssues(this.projectId);
+      return issues ?? [];
+    } catch (error) {
+      console.error(`Error fetching issues for project ${this.projectId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Saves the list of issues for the project.
+   * @param issues The array of Tickets to save.
+   */
+  public async saveIssuesList(issues: Ticket[]): Promise<void> {
+    try {
+      await this.api.saveIssues(this.projectId, issues);
+    } catch (error) {
+      console.error(`Error saving issues for project ${this.projectId}:`, error);
+      throw error;
+    }
+  }
+
+}

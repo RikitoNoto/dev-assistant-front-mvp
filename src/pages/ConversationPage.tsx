@@ -5,7 +5,7 @@ import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 import Header from '../components/Header';
 import ChatInterface from '../components/ChatInterface';
 import MarkdownRenderer from '../components/MarkdownRenderer';
-import { Conversation, Message } from '../types';
+import { Conversation, Message, Ticket } from '../types';
 import { getConversationHistory } from '../mock/data';
 // Import individual API functions and the ApiFunctions type
 import {
@@ -169,7 +169,7 @@ const ConversationPage: React.FC = () => {
       streaming: true,
     };
 
-    setConversation(prev => {
+    setConversation((prev: Conversation | null) => {
       const updatedMessages = prev ? [...prev.messages, userMessage, aiMessagePlaceholder] : [userMessage, aiMessagePlaceholder];
       return {
         id: prev?.id || `conv-${Date.now()}`,
@@ -189,19 +189,14 @@ const ConversationPage: React.FC = () => {
       // projectId is handled internally by the model instance
       (chunk) => { // onChunk callback
         console.log('Received chunk:', chunk);
-        setConversation(prev => {
-          if (!prev) return prev;
-
-          if (chunk.message) {
-            const updatedMessages = prev.messages.map(msg =>
+          setConversation((prev: Conversation | null) => prev ? {
+            ...prev,
+            messages: prev.messages.map((msg: Message) =>
               msg.id === aiMessagePlaceholder.id
                 ? { ...msg, content: msg.content + chunk.message }
                 : msg
-            );
-            return { ...prev, messages: updatedMessages };
-          }
-          return prev;
-        });
+            )
+          } : prev);
 
         if (chunk.file) {
           if (isFirstFileChunk.current) {
@@ -216,29 +211,27 @@ const ConversationPage: React.FC = () => {
       },
       (err: Error) => {
         console.error('Streaming error:', err);
-        setConversation(prev => {
-          if (!prev) return prev;
-          const updatedMessages = prev.messages.map(msg =>
-            msg.id === aiMessagePlaceholder.id
-              ? { ...msg, content: 'Error receiving response.', streaming: false }
-              : msg
-          );
-          return { ...prev, messages: updatedMessages };
-        });
+          setConversation((prev: Conversation | null) => prev ? {
+            ...prev,
+            messages: prev.messages.map((msg: Message) =>
+              msg.id === aiMessagePlaceholder.id
+                ? { ...msg, content: 'Error receiving response.', streaming: false }
+                : msg
+            )
+          } : prev);
         setIsSendingMessage(false);
         abortControllerRef.current = null;
       },
 
       () => {
-        setConversation(prev => {
-          if (!prev) return prev;
-          const updatedMessages = prev.messages.map(msg =>
+        setConversation((prev: Conversation | null) => prev ? {
+          ...prev,
+          messages: prev.messages.map((msg: Message) =>
             msg.id === aiMessagePlaceholder.id
               ? { ...msg, streaming: false }
               : msg
-          );
-          return { ...prev, messages: updatedMessages };
-        });
+          )
+        } : prev);
         setIsSendingMessage(false);
         abortControllerRef.current = null;
       } // onClose callback

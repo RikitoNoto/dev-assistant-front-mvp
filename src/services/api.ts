@@ -1,4 +1,4 @@
-import { Project } from '../types'; // Import Project type
+import { Project, Ticket } from '../types';
 
 export interface ApiFunctions {
   sendStreamingMessage: typeof sendStreamingMessage;
@@ -6,16 +6,18 @@ export interface ApiFunctions {
   getTechSpecDocument: typeof getTechSpecDocument;
   savePlanDocument: typeof savePlanDocument;
   saveTechSpecDocument: typeof saveTechSpecDocument;
+  getIssues: typeof getIssues;
+  saveIssues: typeof saveIssues;
 }
 
-type StreamCallback = (data: { message?: string; file?: string }) => void;
+type StreamCallback = (data: { message?: string; file?: string; issues?: Ticket[] }) => void;
 type ErrorCallback = (error: any) => void;
 type CloseCallback = () => void;
 
 type HistoryItem = { [key: string]: string };
 
 export const sendStreamingMessage = (
-  type: 'plan' | 'technicalSpecs',
+  type: 'plan' | 'technicalSpecs' | 'issue',
   messageContent: string,
   history: HistoryItem[],
   projectId: string,
@@ -25,7 +27,9 @@ export const sendStreamingMessage = (
 ): AbortController => {
   const url = type === 'plan'
     ? `/chat/plan/stream`
-    : `/chat/tech-spec/stream`;
+    : type === 'technicalSpecs'
+      ? `/chat/tech-spec/stream`
+      : `/chat/issue/stream`;
 
   const controller = new AbortController();
   const signal = controller.signal;
@@ -83,7 +87,6 @@ export const sendStreamingMessage = (
   return controller;
 };
 
-// Define the structure of the API response item
 interface ApiProject {
   project_id: string;
   title: string;
@@ -156,6 +159,7 @@ export const saveTechSpecDocument = async (projectId: string, content: string): 
     throw error;
   }
 };
+
 interface CreateProjectResponse {
   project_id: string;
   title: string;
@@ -195,7 +199,6 @@ export const createProject = async (title: string): Promise<Project> => {
   }
 };
 
-// Define the structure for document API responses
 interface DocumentResponse {
   project_id: string;
   content: string;
@@ -215,6 +218,62 @@ export const getPlanDocument = async (projectId: string): Promise<string | null>
   } catch (error) {
     console.error(`Failed to fetch plan document for project ${projectId}:`, error);
     return null;
+  }
+};
+
+export const getIssues = async (projectId: string): Promise<Ticket[] | null> => {
+  try {
+    const response = await fetch(`/issues/${projectId}`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return []; 
+      }
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const data: Ticket[] = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Failed to fetch issues for project ${projectId}:`, error);
+    return null;
+  }
+};
+
+export const saveIssues = async (projectId: string, issues: Ticket[]): Promise<void> => {
+  try {
+    const response = await fetch(`/issues`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ project_id: projectId, issues: issues }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to save issues for project ${projectId}:`, error);
+    throw error;
+  }
+};
+
+export const deleteIssue = async (projectId: string, issueId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/issues/${projectId}/${issueId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to delete issue ${issueId} for project ${projectId}:`, error);
+    throw error;
   }
 };
 
