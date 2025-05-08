@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import ChatInterface from './ChatInterface';
-import { Conversation, Message } from '../types';
+import { Conversation, Message, Ticket } from '../types';
 import { getConversationHistory } from '../mock/data';
-import { ApiFunctions, sendStreamingMessage, getPlanDocument, getTechSpecDocument } from '../services/api';
-import { Chatbot, PlanChatbot, TechSpecChatbot } from '../models/chatbot';
+import { ApiFunctions, sendStreamingMessage, getPlanDocument, getTechSpecDocument, getIssues } from '../services/api';
+import { Chatbot, PlanChatbot, TechSpecChatbot, IssueChatbot } from '../models/chatbot';
 
 interface ChatSidePanelProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
-  type: 'plan' | 'technicalSpecs';
-  onDiffChange?: (showDiff: boolean, originalContent: string, newContent: string,isFirstChunk: boolean) => void;
+  type: 'plan' | 'technicalSpecs' | 'issue';
+  onDiffChange?: (showDiff: boolean, originalContent: string, newContent: string, isFirstChunk: boolean) => void;
 }
 
 const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectId, type, onDiffChange }) => {
@@ -30,8 +30,10 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
     const chatApiFuncs: Pick<ApiFunctions, 'sendStreamingMessage'> = { sendStreamingMessage };
     if (type === 'plan') {
       setChatbot(new PlanChatbot(projectId, chatApiFuncs));
-    } else {
+    } else if (type === 'technicalSpecs') {
       setChatbot(new TechSpecChatbot(projectId, chatApiFuncs));
+    } else if (type === 'issue') {
+      setChatbot(new IssueChatbot(projectId, chatApiFuncs));
     }
   }, [projectId, type]);
 
@@ -61,8 +63,11 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
         let doc = '';
         if (type === 'plan') {
           doc = await getPlanDocument(projectId) || '';
-        } else {
+        } else if (type === 'technicalSpecs') {
           doc = await getTechSpecDocument(projectId) || '';
+        } else if (type === 'issue') {
+          // For issues, we don't need to fetch a document
+          doc = '';
         }
         documentContentRef.current = doc;
       } catch (err: any) {
@@ -105,7 +110,7 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
       content,
       conversation?.messages?.filter(msg => !msg.streaming).map(msg => ({ [msg.sender]: msg.content })) || [],
       (chunk) => {
-        if (chunk.file && onDiffChange) {
+        if (chunk.file && onDiffChange && type !== 'issue') {
           if (isFirstFileChunk.current) {
             // First chunk - initialize the diff view
             onDiffChange(true, documentContentRef.current, chunk.file, true);
@@ -115,6 +120,13 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
             onDiffChange(true, documentContentRef.current, chunk.file, false);
           }
         }
+        
+        // Handle issues if they're present in the chunk (for issue type)
+        if (chunk.issues && type === 'issue') {
+          // You can handle issues here if needed
+          console.log('Received issues:', chunk.issues);
+        }
+        
         setConversation((prev) => prev ? {
           ...prev,
           messages: prev.messages.map((msg) =>
@@ -157,7 +169,7 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
   return (
     <div className={`fixed top-0 right-0 h-full w-[400px] bg-white shadow-lg z-50 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
-        <h2 className="text-lg font-semibold">AI Chat</h2>
+        <h2 className="text-lg font-semibold">{type === 'issue' ? 'Issue Chat' : 'AI Chat'}</h2>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
           <X className="h-5 w-5" />
         </button>

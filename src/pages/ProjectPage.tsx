@@ -19,7 +19,7 @@ const ProjectPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   // チャットサイドパネル用の状態
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [activeChatType, setActiveChatType] = useState<'plan' | 'technicalSpecs' | null>(null);
+  const [activeChatType, setActiveChatType] = useState<'plan' | 'technicalSpecs' | 'issue' | null>(null);
   
   // Diff view state
   const [showDiff, setShowDiff] = useState(false);
@@ -70,7 +70,7 @@ const ProjectPage: React.FC = () => {
   };
 
   // サイドパネルでチャットを開く
-  const handleOpenChat = (type: 'plan' | 'technicalSpecs') => {
+  const handleOpenChat = (type: 'plan' | 'technicalSpecs' | 'issue') => {
     setActiveChatType(type);
     setIsChatOpen(true);
   };
@@ -87,7 +87,7 @@ const ProjectPage: React.FC = () => {
       setNewContent(prev => prev + newContentChunk);
     }
   };
-  
+
   // Handle accepting diff changes
   const handleAcceptDiff = async () => {
     setIsSaving(true);
@@ -276,7 +276,7 @@ const ProjectPage: React.FC = () => {
               <TicketsList tickets={[]} />
             </div>
             <button
-              onClick={() => handleNavigateToConversation('tickets')}
+              onClick={() => handleOpenChat('issue')}
               className="absolute top-4 right-4 p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               title="Edit in conversation"
             >
