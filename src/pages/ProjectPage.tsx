@@ -29,6 +29,9 @@ const ProjectPage: React.FC = () => {
   const [newContent, setNewContent] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [addIssues, setAddIssues] = useState<string[]>([]);
+  const [removeIssues, setRemoveIssues] = useState<string[]>([]);
+  const [issueContent, setIssueContent] = useState<string>('');
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -83,7 +86,6 @@ const ProjectPage: React.FC = () => {
   const handleDiffChange = (showDiff: boolean, originalContent: string, newContentChunk: string, isFirstChunk: boolean = true) => {
     setShowDiff(showDiff);
     setOriginalContent(originalContent);
-    
     // If it's the first chunk, replace the content, otherwise append
     if (isFirstChunk) {
       setNewContent(newContentChunk);
@@ -91,6 +93,27 @@ const ProjectPage: React.FC = () => {
       setNewContent(prev => prev + newContentChunk);
     }
   };
+
+  const handleDiffChangeIssue = (showDiff: boolean, originalContent: string, newContentChunk: string, isFirstChunk: boolean = true) => {
+
+    // If it's the first chunk, replace the content, otherwise append
+    if (isFirstChunk) {
+      setIssueContent(newContentChunk);
+    } else {
+      setIssueContent(prev => prev + newContentChunk);
+    }
+    setAddIssues([]);
+    setRemoveIssues([]);
+    console.log(issueContent);
+    issueContent.split('\n').forEach(line => {
+      if (line.startsWith('+')) {
+        setAddIssues([...addIssues, line.slice(1)]);
+      } else if (line.startsWith('-')) {
+        setRemoveIssues([...removeIssues, line.slice(1)]);
+      }
+    });
+  }
+    
 
   // Handle accepting diff changes
   const handleAcceptDiff = async () => {
@@ -286,6 +309,18 @@ const ProjectPage: React.FC = () => {
             >
               <MessageSquare className="h-5 w-5" />
             </button>
+            <div>
+              <h3>Add Issues</h3>
+              {addIssues.map((issue, index) => (
+                <div key={index}>{issue}</div>
+              ))} 
+            </div>
+            <div>
+              <h3>Remove Issues</h3>
+              {removeIssues.map((issue, index) => (
+                <div key={index}>{issue}</div>
+              ))}
+            </div>
           </div>
         );
       default:
@@ -320,7 +355,7 @@ const ProjectPage: React.FC = () => {
               onClose={() => setIsChatOpen(false)}
               projectId={projectId || ''}
               type={activeChatType || 'plan'}
-              onDiffChange={handleDiffChange}
+              onDiffChange={activeChatType === 'issue' ? handleDiffChangeIssue : handleDiffChange}
             />
           </div>
         </div>

@@ -110,7 +110,7 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
       content,
       conversation?.messages?.filter(msg => !msg.streaming).map(msg => ({ [msg.sender]: msg.content })) || [],
       (chunk) => {
-        if (chunk.file && onDiffChange && type !== 'issue') {
+        if (chunk.file && onDiffChange) {
           if (isFirstFileChunk.current) {
             // First chunk - initialize the diff view
             onDiffChange(true, documentContentRef.current, chunk.file, true);
@@ -119,12 +119,6 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
             // For subsequent chunks, we need to append to the existing content
             onDiffChange(true, documentContentRef.current, chunk.file, false);
           }
-        }
-        
-        // Handle issues if they're present in the chunk (for issue type)
-        if (chunk.issues && type === 'issue') {
-          // You can handle issues here if needed
-          console.log('Received issues:', chunk.issues);
         }
         
         setConversation((prev) => prev ? {
