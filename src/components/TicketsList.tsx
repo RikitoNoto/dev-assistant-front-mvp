@@ -53,9 +53,6 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets }) => {
                 >
                   <div className="flex justify-between items-start">
                     <h4 className="text-sm font-medium text-gray-900">{ticket.title}</h4>
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ticket.status]}`}>
-                      {statusLabels[ticket.status]}
-                    </span>
                   </div>
                   
                   <p className="mt-1 text-xs text-gray-600 line-clamp-2">{ticket.description}</p>
