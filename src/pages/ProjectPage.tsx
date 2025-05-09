@@ -6,8 +6,9 @@ import Header from '../components/Header';
 import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
-import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument } from '../services/api';
+import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues } from '../services/api';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
+import { Ticket } from '../types';
 
 const ProjectPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -15,6 +16,7 @@ const ProjectPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('plan');
   const [planContent, setPlanContent] = useState<string | null>(null);
   const [techSpecContent, setTechSpecContent] = useState<string | null>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // チャットサイドパネル用の状態
@@ -36,15 +38,17 @@ const ProjectPage: React.FC = () => {
       setError(null);
 
       try {
-        const [planData, techSpecData] = await Promise.all([
+        const [planData, techSpecData, ticketsData] = await Promise.all([
           getPlanDocument(projectId),
-          getTechSpecDocument(projectId)
+          getTechSpecDocument(projectId),
+          getIssues(projectId)
         ]);
 
         setPlanContent(planData);
         setTechSpecContent(techSpecData);
+        setTickets(ticketsData || []);
 
-        if ( planData === null || techSpecData === null) {
+        if (planData === null || techSpecData === null) {
           console.warn("Some project data might be missing.");
         }
 
@@ -273,7 +277,7 @@ const ProjectPage: React.FC = () => {
         return (
           <div className="relative">
             <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
-              <TicketsList tickets={[]} />
+              <TicketsList tickets={tickets} />
             </div>
             <button
               onClick={() => handleOpenChat('issue')}

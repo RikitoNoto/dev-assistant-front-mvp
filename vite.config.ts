@@ -22,6 +22,10 @@ export default defineConfig({
         target: 'http://localhost:8888',
         changeOrigin: true,
       },
+      '/issues': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
     },
     watch: {
       usePolling: true

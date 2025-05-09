@@ -21,7 +21,7 @@ export interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  status: 'todo' | 'in-progress' | 'review' | 'done';
   assignee?: string;
   comments: Comment[];
   priority: 'low' | 'medium' | 'high';
