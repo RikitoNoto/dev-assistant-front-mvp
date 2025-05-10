@@ -29,8 +29,6 @@ const ProjectPage: React.FC = () => {
   const [newContent, setNewContent] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [addIssues, setAddIssues] = useState<string[]>([]);
-  const [removeIssues, setRemoveIssues] = useState<string[]>([]);
   const [issueContent, setIssueContent] = useState<string>('');
 
   useEffect(() => {
@@ -102,16 +100,6 @@ const ProjectPage: React.FC = () => {
     } else {
       setIssueContent(prev => prev + newContentChunk);
     }
-    setAddIssues([]);
-    setRemoveIssues([]);
-    console.log(issueContent);
-    issueContent.split('\n').forEach(line => {
-      if (line.startsWith('+')) {
-        setAddIssues([...addIssues, line.slice(1)]);
-      } else if (line.startsWith('-')) {
-        setRemoveIssues([...removeIssues, line.slice(1)]);
-      }
-    });
   }
     
 
@@ -311,13 +299,15 @@ const ProjectPage: React.FC = () => {
             </button>
             <div>
               <h3>Add Issues</h3>
-              {addIssues.map((issue, index) => (
+              {
+              issueContent.split('\n').filter(line => line.startsWith('+')).map((issue, index) => (
                 <div key={index}>{issue}</div>
               ))} 
             </div>
             <div>
               <h3>Remove Issues</h3>
-              {removeIssues.map((issue, index) => (
+              { 
+              issueContent.split('\n').filter(line => line.startsWith('-')).map((issue, index) => (
                 <div key={index}>{issue}</div>
               ))}
             </div>
