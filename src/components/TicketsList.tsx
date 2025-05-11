@@ -4,15 +4,26 @@ import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface TicketsListProps {
   tickets: Ticket[];
-  newTickets?: string[];  // New ticket titles to add
-  removedTickets?: string[];  // IDs of tickets to remove
+  newTicketTitles?: string[];  // New ticket titles to add
+  removeTicketIds?: string[];  // IDs of tickets to remove
   onAccept?: (ticket: Ticket | { type: 'add' | 'remove'; id: string }) => void;
 }
 
-const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTickets = [], removedTickets = [], onAccept }) => {
-  // Group tickets by status
+const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = [], removeTicketIds = [], onAccept }) => {
+  // Create new ticket objects from newTicketTitles
+  const newTickets: Ticket[] = newTicketTitles.map((title, index) => ({
+    project_id: "",
+    issue_id: "",
+    title,
+    description: '',
+    status: 'todo' as const,
+    priority: 'medium',
+    comments: []
+  }));
+
+  // Group tickets by status and add new tickets to todo
   const ticketsByStatus = {
-    todo: tickets.filter(ticket => ticket.status === 'todo'),
+    todo: [...tickets.filter(ticket => ticket.status === 'todo'), ...newTickets],
     'in-progress': tickets.filter(ticket => ticket.status === 'in-progress'),
     review: tickets.filter(ticket => ticket.status === 'review'),
     done: tickets.filter(ticket => ticket.status === 'done')
@@ -46,14 +57,28 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTickets = [], rem
                 <div 
                   key={ticket.project_id}
                   className={`p-3 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 ${
-                    // 削除するチケットは赤色にする
-                    removedTickets.includes(ticket.issue_id) 
+                    // 削除するチケットは赤色、新規チケットは緑色にする
+                    removeTicketIds.includes(ticket.issue_id) 
                       ? 'bg-red-100 border-red-200' 
-                      : 'bg-white border border-gray-200'
+                      : ticket.issue_id === ""
+                        ? 'bg-green-50 border-green-200 border-2 border-dashed'
+                        : 'bg-white border border-gray-200'
                   }`}
                 >
                   <div className="flex justify-between items-start">
-                    <h4 className="text-sm font-medium text-gray-900">{ticket.title}</h4>
+                    <h4 className={`text-sm font-medium ${
+                      ticket.issue_id === "" ? 'text-green-800' : 'text-gray-900'
+                    }`}>
+                      {ticket.title}
+                    </h4>
+                    {ticket.issue_id === "" && onAccept &&  (
+                      <button
+                        onClick={() => onAccept({ type: 'add', id: ticket.issue_id })}
+                        className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                      >
+                        追加
+                      </button>
+                    )}
                   </div>
                   
                   <p className="mt-1 text-xs text-gray-600 line-clamp-2">{ticket.description}</p>
