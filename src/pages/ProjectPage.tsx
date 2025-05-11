@@ -391,20 +391,6 @@ const ProjectPage: React.FC = () => {
             >
               <MessageSquare className="h-5 w-5" />
             </button>
-            <div>
-              <h3>Add Issues</h3>
-              {
-              issueContent.split('\n').filter(line => line.startsWith('+')).map((issue, index) => (
-                <div key={index}>{issue}</div>
-              ))} 
-            </div>
-            <div>
-              <h3>Remove Issues</h3>
-              { 
-              issueContent.split('\n').filter(line => line.startsWith('-')).map((issue, index) => (
-                <div key={index}>{issue}</div>
-              ))}
-            </div>
           </div>
         );
       default:
