@@ -86,7 +86,7 @@ const IssueTrackerPage: React.FC<IssueTrackerPageProps> = () => {
   const handleSaveEditedIssue = (updatedIssue: Issue) => {
     setTickets(prev => 
       prev.map(ticket => 
-        ticket.id === updatedIssue.id ? { 
+        ticket.project_id === updatedIssue.project_id ? { 
           ...ticket, 
           ...updatedIssue
         } : ticket

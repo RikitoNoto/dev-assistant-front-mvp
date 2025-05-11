@@ -288,7 +288,11 @@ const ProjectPage: React.FC = () => {
         return (
           <div className="relative">
             <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
-              <TicketsList tickets={tickets} />
+              <TicketsList
+                tickets={tickets}
+                newTickets={issueContent.split('\n').filter(line => line.startsWith('+')).map(line => line.slice(1).trim())}
+                removedTickets={issueContent.split('\n').filter(line => line.startsWith('-')).map(line => line.slice(1).trim())}
+              />
             </div>
             <button
               onClick={() => handleOpenChat('issue')}

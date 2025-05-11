@@ -4,9 +4,12 @@ import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface TicketsListProps {
   tickets: Ticket[];
+  newTickets?: string[];  // New ticket titles to add
+  removedTickets?: string[];  // IDs of tickets to remove
+  onAccept?: (ticket: Ticket | { type: 'add' | 'remove'; id: string }) => void;
 }
 
-const TicketsList: React.FC<TicketsListProps> = ({ tickets }) => {
+const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTickets = [], removedTickets = [], onAccept }) => {
   // Group tickets by status
   const ticketsByStatus = {
     todo: tickets.filter(ticket => ticket.status === 'todo'),
@@ -41,8 +44,13 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets }) => {
             <div className="space-y-3">
               {ticketsByStatus[status as keyof typeof ticketsByStatus].map(ticket => (
                 <div 
-                  key={ticket.id}
-                  className="p-3 bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
+                  key={ticket.project_id}
+                  className={`p-3 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 ${
+                    // 削除するチケットは赤色にする
+                    removedTickets.includes(ticket.issue_id) 
+                      ? 'bg-red-100 border-red-200' 
+                      : 'bg-white border border-gray-200'
+                  }`}
                 >
                   <div className="flex justify-between items-start">
                     <h4 className="text-sm font-medium text-gray-900">{ticket.title}</h4>
