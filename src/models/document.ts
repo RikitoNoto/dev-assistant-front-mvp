@@ -148,7 +148,10 @@ export class IssueModel {
    */
   public async saveIssuesList(issues: Ticket[]): Promise<void> {
     try {
-      await this.api.saveIssues(this.projectId, issues);
+      // Process each issue individually
+      for (const issue of issues) {
+        await this.api.saveIssues(this.projectId, issue);
+      }
     } catch (error) {
       console.error(`Error saving issues for project ${this.projectId}:`, error);
       throw error;

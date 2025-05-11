@@ -18,7 +18,8 @@ export interface Message {
 }
 
 export interface Ticket {
-  id: string;
+  project_id: string;
+  issue_id: string;
   title: string;
   description: string;
   status: 'todo' | 'in-progress' | 'review' | 'done';
