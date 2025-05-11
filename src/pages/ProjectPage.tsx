@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
-import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues } from '../services/api';
+import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue } from '../services/api';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 import { Ticket } from '../types';
 
@@ -28,40 +28,41 @@ const ProjectPage: React.FC = () => {
   const [originalContent, setOriginalContent] = useState<string>('');
   const [newContent, setNewContent] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessingTicket, setIsProcessingTicket] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [issueContent, setIssueContent] = useState<string>('');
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      if (!projectId) return;
+  const fetchAllData = async () => {
+    if (!projectId) return;
 
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const [planData, techSpecData, ticketsData] = await Promise.all([
-          getPlanDocument(projectId),
-          getTechSpecDocument(projectId),
-          getIssues(projectId)
-        ]);
+    try {
+      const [planData, techSpecData, ticketsData] = await Promise.all([
+        getPlanDocument(projectId),
+        getTechSpecDocument(projectId),
+        getIssues(projectId)
+      ]);
 
-        setPlanContent(planData);
-        setTechSpecContent(techSpecData);
-        setTickets(ticketsData || []);
+      setPlanContent(planData);
+      setTechSpecContent(techSpecData);
+      setTickets(ticketsData || []);
 
-        if (planData === null || techSpecData === null) {
-          console.warn("Some project data might be missing.");
-        }
-
-      } catch (err: any) {
-        console.error('Error fetching project data:', err);
-        setError(err.message || 'Failed to load project data.');
-        setPlanContent(null);
-        setTechSpecContent(null);
-      } finally {
-        setIsLoading(false);
+      if (planData === null || techSpecData === null) {
+        console.warn("Some project data might be missing.");
       }
-    };
+
+    } catch (err: any) {
+      console.error('Error fetching project data:', err);
+      setError(err.message || 'Failed to load project data.');
+      setPlanContent(null);
+      setTechSpecContent(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
 
     fetchAllData();
   }, [projectId]);
@@ -134,6 +135,88 @@ const ProjectPage: React.FC = () => {
     setShowDiff(false);
     setOriginalContent('');
     setNewContent('');
+  };
+
+  // Handle accepting ticket changes (add or remove)
+  const handleAcceptTicket = async (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => {
+    if (!projectId) return;
+    
+    setIsProcessingTicket(true);
+    
+    try {
+      // Handle new ticket creation
+      if ('type' in ticket && ticket.type === 'add') {
+        if(!ticket.title) return;
+        
+        // Create a new ticket with the title from the id field
+        const newTicket: Ticket = {
+          project_id: projectId,
+          issue_id: "",
+          title: ticket.title,
+          description: '',
+          status: 'todo',
+          priority: 'medium',
+          comments: []
+        };
+        
+        // Call the API to create the ticket
+        await saveIssues(projectId, newTicket);
+        
+        // Update the tickets state with the new ticket
+        fetchAllData();
+        
+        // Clean up the issueContent by removing the processed ticket
+        // Use exact matching to ensure we only remove the specific ticket
+        setIssueContent(prev => {
+          const lines = prev.split('\n');
+          return lines.filter(line => {
+            // Only keep lines that don't exactly match the format "+ticketTitle"
+            const trimmedLine = line.trim();
+            if (!ticket.title) return true;
+            return !trimmedLine.includes(ticket.title);
+          }).join('\n');
+        });
+      }
+      // Handle ticket deletion
+      else if ('type' in ticket && ticket.type === 'remove') {
+        if(!ticket.id) return;
+        
+        // Call the API to delete the ticket
+        await deleteIssue(projectId, ticket.id);
+        
+        // Update the tickets state by removing the deleted ticket
+        setTickets(prev => prev.filter(t => t.issue_id !== ticket.id));
+        
+        // Clean up the issueContent by removing the processed ticket
+        // Use exact matching to ensure we only remove the specific ticket
+        setIssueContent(prev => {
+          const lines = prev.split('\n');
+          return lines.filter(line => {
+            // Only keep lines that don't exactly match the format "-ticketId"
+            const trimmedLine = line.trim();
+            if (!ticket.id) return true;
+            return trimmedLine !== `-${ticket.id}`;
+          }).join('\n');
+        });
+      }
+    } catch (error: any) {
+      console.error('Error processing ticket operation:', error);
+      setSaveError(error.message || 'Failed to process ticket operation');
+    } finally {
+      setIsProcessingTicket(false);
+    }
+  };
+  
+  // Handle rejecting ticket changes (add or remove)
+  const handleRejectTicket = (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => {
+    // Just remove the ticket from issueContent without making API calls
+    if ('type' in ticket) {
+      setIssueContent(prev => {
+        const lines = prev.split('\n');
+        const prefix = ticket.type === 'add' ? '+' : '-';
+        return lines.filter(line => !line.includes(`${prefix}${ticket.id}`)).join('\n');
+      });
+    }
   };
 
   const renderTabContent = () => {
@@ -288,12 +371,17 @@ const ProjectPage: React.FC = () => {
         return (
           <div className="relative">
             <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-[200px]">
+              {isProcessingTicket && (
+                <div className="mb-4 p-3 rounded-md border bg-blue-100 border-blue-300 text-blue-700">
+                  <Loader2 className="h-4 w-4 mr-1 inline animate-spin" /> Processing ticket operation...
+                </div>
+              )}
               <TicketsList
                 tickets={tickets}
                 newTicketTitles={issueContent.split('\n').filter(line => line.startsWith('+')).map(line => line.slice(1).trim())}
                 removeTicketIds={issueContent.split('\n').filter(line => line.startsWith('-')).map(line => line.slice(1).trim())}
-                onAccept={() => {}}
-                onReject={() => {}}
+                onAccept={handleAcceptTicket}
+                onReject={handleRejectTicket}
               />
             </div>
             <button

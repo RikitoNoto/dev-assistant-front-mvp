@@ -6,8 +6,8 @@ interface TicketsListProps {
   tickets: Ticket[];
   newTicketTitles?: string[];  // New ticket titles to add
   removeTicketIds?: string[];  // IDs of tickets to remove
-  onAccept?: (ticket: Ticket | { type: 'add' | 'remove'; id: string }) => void;
-  onReject?: (ticket: Ticket | { type: 'add' | 'remove'; id: string }) => void;
+  onAccept?: (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => void;
+  onReject?: (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => void;
 }
 
 const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = [], removeTicketIds = [], onAccept, onReject }) => {
@@ -74,14 +74,14 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = []
                       {ticket.issue_id === "" && (
                         <>
                           <button
-                            onClick={() => onAccept({ type: 'add', id: ticket.title })}
+                            onClick={() => onAccept({ type: 'add', title: ticket.title })}
                             className="flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors border border-white"
                             title="追加を適用"
                           >
                             <Check className="h-3 w-3 mr-1" /> 適用
                           </button>
                           <button
-                            onClick={() => onReject({ type: 'add', id: ticket.title })}
+                            onClick={() => onReject({ type: 'add', title: ticket.title })}
                             className="flex items-center px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors border border-white"
                             title="追加を拒否"
                           >

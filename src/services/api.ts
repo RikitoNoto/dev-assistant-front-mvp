@@ -241,22 +241,37 @@ export const getIssues = async (projectId: string): Promise<Ticket[] | null> => 
   }
 };
 
-export const saveIssues = async (projectId: string, issues: Ticket[]): Promise<void> => {
+export interface SaveIssueResponse {
+  issue_id: string;
+  project_id: string;
+  status: "success" | "error";
+}
+
+export const saveIssues = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse> => {
   try {
-    const response = await fetch(`/issues`, {
+    const response = await fetch(`/issues/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ project_id: projectId, issues: issues }),
+      body: JSON.stringify({ 
+        project_id: projectId,
+        issue_id: issue.issue_id,
+        title: issue.title,
+        description: issue.description,
+        status: issue.status,
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
+
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error(`Failed to save issues for project ${projectId}:`, error);
+    console.error(`Failed to save issue for project ${projectId}:`, error);
     throw error;
   }
 };
