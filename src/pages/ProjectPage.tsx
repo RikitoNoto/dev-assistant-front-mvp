@@ -292,6 +292,8 @@ const ProjectPage: React.FC = () => {
                 tickets={tickets}
                 newTicketTitles={issueContent.split('\n').filter(line => line.startsWith('+')).map(line => line.slice(1).trim())}
                 removeTicketIds={issueContent.split('\n').filter(line => line.startsWith('-')).map(line => line.slice(1).trim())}
+                onAccept={() => {}}
+                onReject={() => {}}
               />
             </div>
             <button
