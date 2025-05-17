@@ -8,6 +8,7 @@ export interface ApiFunctions {
   saveTechSpecDocument: typeof saveTechSpecDocument;
   getIssues: typeof getIssues;
   saveIssues: typeof saveIssues;
+  openProject: typeof openProject;
 }
 
 type StreamCallback = (data: { message?: string; file?: string; issues?: Ticket[] }) => void;
@@ -92,6 +93,7 @@ interface ApiProject {
   title: string;
   created_at: string;
   updated_at: string;
+  last_opened_at: string;
 }
 
 export const getProjects = async (): Promise<Project[]> => {
@@ -111,6 +113,7 @@ export const getProjects = async (): Promise<Project[]> => {
       description: '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
+      lastOpenedAt: apiProject.last_opened_at,
     }));
 
     return projects;
@@ -306,5 +309,31 @@ export const getTechSpecDocument = async (projectId: string): Promise<string | n
   } catch (error) {
     console.error(`Failed to fetch tech spec document for project ${projectId}:`, error);
     return null;
+  }
+};
+
+/**
+ * Records that a project has been opened/viewed.
+ * This is used for sorting projects by last viewed date in the project list.
+ * 
+ * @param projectId - The ID of the project being opened
+ * @returns A promise that resolves when the request completes
+ */
+export const openProject = async (projectId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/projects/${projectId}/open`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to record project open for project ${projectId}:`, error);
+    // Not throwing the error since this is not a critical operation
   }
 };
