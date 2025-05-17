@@ -5,7 +5,7 @@ import Header from '../components/Header';
 import ProjectCard from '../components/ProjectCard';
 import NewProjectModal from '../components/NewProjectModal';
 import { Project } from '../types';
-import { getProjects, createProject } from '../services/api';
+import { getProjects, createProject, openProject } from '../services/api';
 
 const HomePage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -17,7 +17,14 @@ const HomePage: React.FC = () => {
     const fetchProjects = async () => {
       try {
         const data = await getProjects();
-        setProjects(data);
+        // Sort projects by lastOpenedAt in descending order (most recently viewed first)
+        const sortedProjects = [...data].sort((a, b) => {
+          // Use lastOpenedAt for sorting if available, otherwise fall back to updatedAt
+          const dateA = a.lastOpenedAt ? new Date(a.lastOpenedAt).getTime() : new Date(a.updatedAt).getTime();
+          const dateB = b.lastOpenedAt ? new Date(b.lastOpenedAt).getTime() : new Date(b.updatedAt).getTime();
+          return dateB - dateA;
+        });
+        setProjects(sortedProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
       } finally {
@@ -29,13 +36,29 @@ const HomePage: React.FC = () => {
   }, []);
 
   const handleProjectClick = (projectId: string) => {
+    // Call openProject to record that this project was viewed
+    // This will be used for sorting projects by last viewed date
+    openProject(projectId).catch(error => {
+      console.error('Error recording project open:', error);
+      // Continue navigation even if the openProject call fails
+    });
+    
     navigate(`/project/${projectId}`);
   };
 
   const handleCreateProject = async (name: string) => {
     try {
       const newProject = await createProject(name);
-      setProjects((prev) => [...prev, newProject]);
+      // Add new project and re-sort by lastOpenedAt
+      setProjects((prev) => {
+        const updatedProjects = [...prev, newProject];
+        return updatedProjects.sort((a, b) => {
+          // Use lastOpenedAt for sorting if available, otherwise fall back to updatedAt
+          const dateA = a.lastOpenedAt ? new Date(a.lastOpenedAt).getTime() : new Date(a.updatedAt).getTime();
+          const dateB = b.lastOpenedAt ? new Date(b.lastOpenedAt).getTime() : new Date(b.updatedAt).getTime();
+          return dateB - dateA;
+        });
+      });
       setIsModalOpen(false);
 
       navigate(`/project/${newProject.id}`);
