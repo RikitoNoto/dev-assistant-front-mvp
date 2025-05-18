@@ -209,13 +209,59 @@ const ProjectPage: React.FC = () => {
   
   // Handle rejecting ticket changes (add or remove)
   const handleRejectTicket = (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => {
-    // Just remove the ticket from issueContent without making API calls
+    // 拒否した場合は、単にissueContentから該当行を削除する
     if ('type' in ticket) {
-      setIssueContent(prev => {
-        const lines = prev.split('\n');
-        const prefix = ticket.type === 'add' ? '+' : '-';
-        return lines.filter(line => !line.includes(`${prefix}${ticket.id}`)).join('\n');
-      });
+      if (ticket.type === 'add' && ticket.title) {
+        setIssueContent(prev => prev.split('\n')
+          .filter(line => !(line.startsWith('+') && line.slice(1).trim() === ticket.title))
+          .join('\n'));
+      } else if (ticket.type === 'remove' && ticket.id) {
+        setIssueContent(prev => prev.split('\n')
+          .filter(line => !(line.startsWith('-') && line.slice(1).trim() === ticket.id))
+          .join('\n'));
+      }
+    }
+  };
+
+  // チケットのステータス変更を処理する関数
+  const handleTicketStatusChange = async (ticketId: string, newStatus: Ticket['status']) => {
+    if (!projectId) return;
+    
+    try {
+      setIsProcessingTicket(true);
+      
+      // 更新対象のチケットを見つける
+      const ticketToUpdate = tickets.find(ticket => ticket.issue_id === ticketId);
+      if (!ticketToUpdate) {
+        throw new Error('チケットが見つかりませんでした。');
+      }
+      
+      // 更新されたチケット情報
+      const updatedTicket: Ticket = {
+        ...ticketToUpdate,
+        status: newStatus
+      };
+      
+      // ローカルの状態を更新
+      setTickets(prev => prev.map(ticket => 
+        ticket.issue_id === ticketId ? updatedTicket : ticket
+      ));
+      
+      // APIを呼び出してサーバー側も更新
+      await saveIssues(projectId, updatedTicket);
+    } catch (error) {
+      console.error('Failed to update ticket status:', error);
+      setSaveError('チケットのステータス更新に失敗しました。');
+      
+      // エラーが発生した場合は元の状態に戻す
+      const originalTicket = tickets.find(t => t.issue_id === ticketId);
+      if (originalTicket) {
+        setTickets(prev => prev.map(ticket => 
+          ticket.issue_id === ticketId ? originalTicket : ticket
+        ));
+      }
+    } finally {
+      setIsProcessingTicket(false);
     }
   };
 
@@ -382,6 +428,7 @@ const ProjectPage: React.FC = () => {
                 removeTicketIds={issueContent.split('\n').filter(line => line.startsWith('-')).map(line => line.slice(1).trim())}
                 onAccept={handleAcceptTicket}
                 onReject={handleRejectTicket}
+                onStatusChange={handleTicketStatusChange}
               />
             </div>
             <button

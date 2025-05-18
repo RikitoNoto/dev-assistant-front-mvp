@@ -99,6 +99,18 @@ const IssueTrackerPage: React.FC<IssueTrackerPageProps> = () => {
     setEditingIssue(ticket);
   };
 
+  // チケットのステータス変更を処理する関数
+  const handleTicketStatusChange = (ticketId: string, newStatus: Ticket['status']) => {
+    setTickets(prev => 
+      prev.map(ticket => 
+        ticket.issue_id === ticketId ? { 
+          ...ticket, 
+          status: newStatus
+        } : ticket
+      )
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header title="Issue Tracker" />
@@ -108,7 +120,10 @@ const IssueTrackerPage: React.FC<IssueTrackerPageProps> = () => {
           {/* チケットリスト */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Tickets</h2>
-            <TicketsList tickets={tickets} />
+            <TicketsList 
+              tickets={tickets}
+              onStatusChange={handleTicketStatusChange}
+            />
           </div>
 
           {/* AIとの会話画面 */}
