@@ -252,8 +252,13 @@ export interface SaveIssueResponse {
 
 export const saveIssues = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse> => {
   try {
-    const response = await fetch(`/issues/`, {
-      method: 'POST',
+    // Determine if this is an update (PUT) or create (POST) based on issue_id presence
+    const isUpdate = issue.issue_id != null && issue.issue_id !== '';
+    const method = isUpdate ? 'PUT' : 'POST';
+    const url = isUpdate ? `/issues/${projectId}/${issue.issue_id}` : '/issues/';
+    
+    const response = await fetch(url, {
+      method,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -274,7 +279,7 @@ export const saveIssues = async (projectId: string, issue: Ticket): Promise<Save
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error(`Failed to save issue for project ${projectId}:`, error);
+    console.error(`Failed to ${issue.issue_id ? 'update' : 'create'} issue for project ${projectId}:`, error);
     throw error;
   }
 };
