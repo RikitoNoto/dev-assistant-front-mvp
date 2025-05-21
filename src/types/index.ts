@@ -34,3 +34,18 @@ export interface Comment {
   author: string;
   timestamp: string;
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  lastOpenedAt?: string;
+  githubProjId?: string;
+}
+
+export interface GitHubProject {
+  id: string;
+  name: string;
+}
