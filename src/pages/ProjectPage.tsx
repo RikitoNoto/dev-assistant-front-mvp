@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, MessageSquare, Check, X, Loader2, Github } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Check, X, Loader2 } from 'lucide-react';
+import { FaGithub } from 'react-icons/fa';
 import ChatSidePanel from '../components/ChatSidePanel';
 import Header from '../components/Header';
 import ProjectTabs from '../components/ProjectTabs';
@@ -421,7 +422,7 @@ const ProjectPage: React.FC = () => {
               onClick={() => setIsGitHubModalOpen(true)}
               className="ml-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md"
             >
-              <Github className="h-4 w-4 mr-1" />
+              <FaGithub className="h-4 w-4 mr-1" />
               Connect to GitHub
             </button>
           </div>

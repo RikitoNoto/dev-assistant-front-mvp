@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Github } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
+import { FaGithub } from 'react-icons/fa';
 import { GitHubProject } from '../types';
 import { getGitHubProjects, connectProjectToGitHub } from '../services/api';
 
@@ -73,7 +74,7 @@ const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-            <Github className="h-5 w-5 mr-2" />
+            <FaGithub className="h-5 w-5 mr-2" />
             Connect to GitHub
           </h2>
           <button
