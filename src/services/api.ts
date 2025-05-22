@@ -9,6 +9,7 @@ export interface ApiFunctions {
   getIssues: typeof getIssues;
   saveIssues: typeof saveIssues;
   openProject: typeof openProject;
+  getProject: typeof getProject;
   getGitHubProjects: typeof getGitHubProjects;
   connectProjectToGitHub: typeof connectProjectToGitHub;
 }
@@ -96,6 +97,7 @@ interface ApiProject {
   created_at: string;
   updated_at: string;
   last_opened_at: string;
+  github_project_id?: string;
 }
 
 export const getProjects = async (): Promise<Project[]> => {
@@ -116,12 +118,41 @@ export const getProjects = async (): Promise<Project[]> => {
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
       lastOpenedAt: apiProject.last_opened_at,
+      githubProjId: apiProject.github_project_id,
     }));
 
     return projects;
   } catch (error) {
     console.error('Failed to fetch projects:', error);
     return [];
+  }
+};
+
+export const getProject = async (projectId: string): Promise<Project | null> => {
+  try {
+    const response = await fetch(`/projects/${projectId}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const apiProject: ApiProject = await response.json();
+
+    const project: Project = {
+      id: apiProject.project_id,
+      name: apiProject.title,
+      description: '',
+      createdAt: apiProject.created_at,
+      updatedAt: apiProject.updated_at,
+      lastOpenedAt: apiProject.last_opened_at,
+      githubProjId: apiProject.github_project_id,
+    };
+
+    return project;
+  } catch (error) {
+    console.error(`Failed to fetch project ${projectId}:`, error);
+    return null;
   }
 };
 

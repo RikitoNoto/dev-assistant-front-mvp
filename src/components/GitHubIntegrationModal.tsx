@@ -9,13 +9,15 @@ interface GitHubIntegrationModalProps {
   onClose: () => void;
   projectId: string;
   onSuccess: () => void;
+  currentGithubProjId?: string;
 }
 
 const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
   isOpen,
   onClose,
   projectId,
-  onSuccess
+  onSuccess,
+  currentGithubProjId
 }) => {
   const [githubProjects, setGithubProjects] = useState<GitHubProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -27,8 +29,12 @@ const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchGitHubProjects();
+      // If there's a current GitHub project ID, set it as selected
+      if (currentGithubProjId) {
+        setSelectedProjectId(currentGithubProjId);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, currentGithubProjId]);
 
   const fetchGitHubProjects = async () => {
     setIsLoading(true);
@@ -37,6 +43,11 @@ const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
     try {
       const projects = await getGitHubProjects();
       setGithubProjects(projects);
+      
+      // If there's a current GitHub project ID, set it as selected
+      if (currentGithubProjId) {
+        setSelectedProjectId(currentGithubProjId);
+      }
     } catch (err: any) {
       console.error('Error fetching GitHub projects:', err);
       setError(err.message || 'Failed to load GitHub projects');
@@ -75,7 +86,7 @@ const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
         <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center">
             <FaGithub className="h-5 w-5 mr-2" />
-            Connect to GitHub
+            {currentGithubProjId ? 'Reconnect to GitHub' : 'Connect to GitHub'}
           </h2>
           <button
             onClick={onClose}
@@ -93,7 +104,9 @@ const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
           )}
           
           <p className="mb-4 text-gray-600">
-            Connect your project to a GitHub repository to sync your code and issues.
+            {currentGithubProjId 
+              ? 'Your project is already connected to a GitHub repository. You can reconnect to a different repository if needed.' 
+              : 'Connect your project to a GitHub repository to sync your code and issues.'}
           </p>
           
           <div className="mb-4">
@@ -131,7 +144,12 @@ const GitHubIntegrationModal: React.FC<GitHubIntegrationModalProps> = ({
                           className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                         />
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-gray-900">{project.name}</h3>
+                          <h3 className="text-sm font-medium text-gray-900">
+                            {project.name}
+                            {currentGithubProjId === project.id && (
+                              <span className="ml-2 text-xs font-normal text-green-600">(Currently connected)</span>
+                            )}
+                          </h3>
                         </div>
                       </div>
                     </div>

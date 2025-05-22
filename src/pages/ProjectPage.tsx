@@ -8,9 +8,9 @@ import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
 import GitHubIntegrationModal from '../components/GitHubIntegrationModal';
-import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue } from '../services/api';
+import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue, getProject } from '../services/api';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
-import { Ticket } from '../types';
+import { Ticket, Project } from '../types';
 
 const ProjectPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -34,7 +34,8 @@ const ProjectPage: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [issueContent, setIssueContent] = useState<string>('');
   
-  // GitHub integration state
+  // Project and GitHub integration state
+  const [project, setProject] = useState<Project | null>(null);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
   const fetchAllData = async () => {
@@ -44,15 +45,17 @@ const ProjectPage: React.FC = () => {
     setError(null);
 
     try {
-      const [planData, techSpecData, ticketsData] = await Promise.all([
+      const [planData, techSpecData, ticketsData, projectData] = await Promise.all([
         getPlanDocument(projectId),
         getTechSpecDocument(projectId),
-        getIssues(projectId)
+        getIssues(projectId),
+        getProject(projectId)
       ]);
 
       setPlanContent(planData);
       setTechSpecContent(techSpecData);
       setTickets(ticketsData || []);
+      setProject(projectData);
 
       if (planData === null || techSpecData === null) {
         console.warn("Some project data might be missing.");
@@ -423,7 +426,7 @@ const ProjectPage: React.FC = () => {
               className="ml-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md"
             >
               <FaGithub className="h-4 w-4 mr-1" />
-              Connect to GitHub
+              {project?.githubProjId ? 'Reconnect GitHub' : 'Connect to GitHub'}
             </button>
           </div>
 
@@ -440,19 +443,18 @@ const ProjectPage: React.FC = () => {
               type={activeChatType || 'plan'}
               onDiffChange={activeChatType === 'issue' ? handleDiffChangeIssue : handleDiffChange}
             />
-            
-            {/* GitHub 連携モーダル */}
+          </div>
+          
+          {/* GitHub 連携モーダル */}
+          {isGitHubModalOpen && (
             <GitHubIntegrationModal
               isOpen={isGitHubModalOpen}
               onClose={() => setIsGitHubModalOpen(false)}
               projectId={projectId || ''}
-              onSuccess={() => {
-                // GitHub連携成功後の処理
-                // 必要に応じてプロジェクトデータを再取得するなど
-                fetchAllData();
-              }}
+              onSuccess={fetchAllData}
+              currentGithubProjId={project?.githubProjId}
             />
-          </div>
+          )}
         </div>
       </main>
     </div>
