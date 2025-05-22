@@ -1,4 +1,4 @@
-import { Project, Ticket } from '../types';
+import { Project, Ticket, GitHubProject } from '../types';
 
 export interface ApiFunctions {
   sendStreamingMessage: typeof sendStreamingMessage;
@@ -9,6 +9,9 @@ export interface ApiFunctions {
   getIssues: typeof getIssues;
   saveIssues: typeof saveIssues;
   openProject: typeof openProject;
+  getProject: typeof getProject;
+  getGitHubProjects: typeof getGitHubProjects;
+  connectProjectToGitHub: typeof connectProjectToGitHub;
 }
 
 type StreamCallback = (data: { message?: string; file?: string; issues?: Ticket[] }) => void;
@@ -94,6 +97,7 @@ interface ApiProject {
   created_at: string;
   updated_at: string;
   last_opened_at: string;
+  github_project_id?: string;
 }
 
 export const getProjects = async (): Promise<Project[]> => {
@@ -114,12 +118,41 @@ export const getProjects = async (): Promise<Project[]> => {
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
       lastOpenedAt: apiProject.last_opened_at,
+      githubProjId: apiProject.github_project_id,
     }));
 
     return projects;
   } catch (error) {
     console.error('Failed to fetch projects:', error);
     return [];
+  }
+};
+
+export const getProject = async (projectId: string): Promise<Project | null> => {
+  try {
+    const response = await fetch(`/projects/${projectId}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const apiProject: ApiProject = await response.json();
+
+    const project: Project = {
+      id: apiProject.project_id,
+      name: apiProject.title,
+      description: '',
+      createdAt: apiProject.created_at,
+      updatedAt: apiProject.updated_at,
+      lastOpenedAt: apiProject.last_opened_at,
+      githubProjId: apiProject.github_project_id,
+    };
+
+    return project;
+  } catch (error) {
+    console.error(`Failed to fetch project ${projectId}:`, error);
+    return null;
   }
 };
 
@@ -340,5 +373,52 @@ export const openProject = async (projectId: string): Promise<void> => {
   } catch (error) {
     console.error(`Failed to record project open for project ${projectId}:`, error);
     // Not throwing the error since this is not a critical operation
+  }
+};
+
+/**
+ * Fetches available GitHub projects for integration
+ * @returns A promise that resolves to an array of GitHub projects
+ */
+export const getGitHubProjects = async (): Promise<GitHubProject[]> => {
+  try {
+    const response = await fetch(`/projects/github/projects`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const githubProjects: GitHubProject[] = await response.json();
+    return githubProjects;
+  } catch (error) {
+    console.error('Failed to fetch GitHub projects:', error);
+    throw error;
+  }
+};
+
+/**
+ * Connects a project to a GitHub repository
+ * @param projectId - The ID of the project to connect
+ * @param githubProjId - The ID of the GitHub repository to connect to
+ * @returns A promise that resolves when the connection is successful
+ */
+export const connectProjectToGitHub = async (projectId: string, githubProjId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/projects/${projectId}/github`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ github_project_id: githubProjId }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to connect project ${projectId} to GitHub:`, error);
+    throw error;
   }
 };

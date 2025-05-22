@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, MessageSquare, Check, X, Loader2 } from 'lucide-react';
+import { FaGithub } from 'react-icons/fa';
 import ChatSidePanel from '../components/ChatSidePanel';
 import Header from '../components/Header';
 import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
-import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue } from '../services/api';
+import GitHubIntegrationModal from '../components/GitHubIntegrationModal';
+import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue, getProject } from '../services/api';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
-import { Ticket } from '../types';
+import { Ticket, Project } from '../types';
 
 const ProjectPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -31,6 +33,10 @@ const ProjectPage: React.FC = () => {
   const [isProcessingTicket, setIsProcessingTicket] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [issueContent, setIssueContent] = useState<string>('');
+  
+  // Project and GitHub integration state
+  const [project, setProject] = useState<Project | null>(null);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
 
   const fetchAllData = async () => {
     if (!projectId) return;
@@ -39,15 +45,17 @@ const ProjectPage: React.FC = () => {
     setError(null);
 
     try {
-      const [planData, techSpecData, ticketsData] = await Promise.all([
+      const [planData, techSpecData, ticketsData, projectData] = await Promise.all([
         getPlanDocument(projectId),
         getTechSpecDocument(projectId),
-        getIssues(projectId)
+        getIssues(projectId),
+        getProject(projectId)
       ]);
 
       setPlanContent(planData);
       setTechSpecContent(techSpecData);
       setTickets(ticketsData || []);
+      setProject(projectData);
 
       if (planData === null || techSpecData === null) {
         console.warn("Some project data might be missing.");
@@ -459,6 +467,14 @@ const ProjectPage: React.FC = () => {
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back to Projects
             </button>
+            
+            <button
+              onClick={() => setIsGitHubModalOpen(true)}
+              className="ml-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md"
+            >
+              <FaGithub className="h-4 w-4 mr-1" />
+              {project?.githubProjId ? 'Reconnect GitHub' : 'Connect to GitHub'}
+            </button>
           </div>
 
           <ProjectTabs activeTab={activeTab} onTabChange={handleTabChange} />
@@ -475,6 +491,17 @@ const ProjectPage: React.FC = () => {
               onDiffChange={activeChatType === 'issue' ? handleDiffChangeIssue : handleDiffChange}
             />
           </div>
+          
+          {/* GitHub 連携モーダル */}
+          {isGitHubModalOpen && (
+            <GitHubIntegrationModal
+              isOpen={isGitHubModalOpen}
+              onClose={() => setIsGitHubModalOpen(false)}
+              projectId={projectId || ''}
+              onSuccess={fetchAllData}
+              currentGithubProjId={project?.githubProjId}
+            />
+          )}
         </div>
       </main>
     </div>
