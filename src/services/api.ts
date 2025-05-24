@@ -12,6 +12,7 @@ export interface ApiFunctions {
   getProject: typeof getProject;
   getGitHubProjects: typeof getGitHubProjects;
   connectProjectToGitHub: typeof connectProjectToGitHub;
+  getGitHubIssues: typeof getGitHubIssues;
 }
 
 type StreamCallback = (data: { message?: string; file?: string; issues?: Ticket[] }) => void;
@@ -421,4 +422,70 @@ export const connectProjectToGitHub = async (projectId: string, githubProjId: st
     console.error(`Failed to connect project ${projectId} to GitHub:`, error);
     throw error;
   }
+};
+
+/**
+ * Fetches GitHub issues for a project
+ * @param projectId - The ID of the project
+ * @returns A promise that resolves to an array of tickets from GitHub
+ */
+export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | null> => {
+  try {
+    const response = await fetch(`/issues/${projectId}/github`);
+
+    if (!response.ok) {
+      // If the project is not connected to GitHub or other error occurs
+      if (response.status === 404) {
+        console.log(`No GitHub connection found for project ${projectId}`);
+        return null;
+      }
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    // Transform GitHub issues to match the Ticket interface
+    const tickets: Ticket[] = data.map((issue: any) => ({
+      project_id: projectId,
+      issue_id: `github-${issue.id}`, // Prefix with 'github-' to distinguish from local issues
+      title: issue.title,
+      description: issue.body || '',
+      status: mapGitHubStateToStatus(issue.project_status),
+      assignee: issue.assignee?.login,
+      comments: issue.comments ? [{ id: `comment-${issue.id}`, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
+      priority: 'medium', // GitHub doesn't have a direct priority field, defaulting to medium
+    }));
+
+    return tickets;
+  } catch (error) {
+    console.error(`Failed to fetch GitHub issues for project ${projectId}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Maps GitHub issue state to the application's status format
+ * @param state - GitHub issue state ('open' or 'closed')
+ * @param stateReason - Reason for the state (e.g., 'completed', 'not_planned')
+ * @returns Status in the application's format
+ */
+const mapGitHubStateToStatus = (state: string): Ticket['status'] => {
+  if (state === "Todo"){
+    return 'todo';
+  }
+
+  if (state === "In Progress"){
+    return 'in-progress';
+  }
+
+  if (state === "Review"){
+    return 'review';
+  }
+
+  if (state === "Done"){
+    return 'done';
+  }
+
+  return 'todo'; // Default fallback
 };

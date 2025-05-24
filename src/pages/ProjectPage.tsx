@@ -8,7 +8,7 @@ import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
 import GitHubIntegrationModal from '../components/GitHubIntegrationModal';
-import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue, getProject } from '../services/api';
+import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue, getProject, getGitHubIssues } from '../services/api';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 import { Ticket, Project } from '../types';
 
@@ -45,17 +45,38 @@ const ProjectPage: React.FC = () => {
     setError(null);
 
     try {
-      const [planData, techSpecData, ticketsData, projectData] = await Promise.all([
+      // First fetch project data to check if GitHub integration exists
+      const projectData = await getProject(projectId);
+      setProject(projectData);
+      
+      // Fetch other project data
+      const [planData, techSpecData, ticketsData] = await Promise.all([
         getPlanDocument(projectId),
         getTechSpecDocument(projectId),
-        getIssues(projectId),
-        getProject(projectId)
+        getIssues(projectId)
       ]);
 
       setPlanContent(planData);
       setTechSpecContent(techSpecData);
-      setTickets(ticketsData || []);
-      setProject(projectData);
+      
+      // Initialize tickets with data from DB
+      let allTickets = ticketsData || [];
+      
+      // If GitHub integration exists, fetch GitHub issues
+      if (projectData?.githubProjId) {
+        try {
+          const githubTickets = await getGitHubIssues(projectId);
+          if (githubTickets && githubTickets.length > 0) {
+            // Combine GitHub tickets with DB tickets
+            allTickets = [...allTickets, ...githubTickets];
+          }
+        } catch (githubErr) {
+          console.error('Error fetching GitHub issues:', githubErr);
+          // Continue with local tickets even if GitHub fetch fails
+        }
+      }
+      
+      setTickets(allTickets);
 
       if (planData === null || techSpecData === null) {
         console.warn("Some project data might be missing.");
