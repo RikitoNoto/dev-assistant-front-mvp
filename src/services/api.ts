@@ -451,7 +451,7 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
       issue_id: `github-${issue.id}`, // Prefix with 'github-' to distinguish from local issues
       title: issue.title,
       description: issue.body || '',
-      status: mapGitHubStateToStatus(issue.state, issue.state_reason),
+      status: mapGitHubStateToStatus(issue.project_status),
       assignee: issue.assignee?.login,
       comments: issue.comments ? [{ id: `comment-${issue.id}`, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
       priority: 'medium', // GitHub doesn't have a direct priority field, defaulting to medium
@@ -470,16 +470,22 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
  * @param stateReason - Reason for the state (e.g., 'completed', 'not_planned')
  * @returns Status in the application's format
  */
-const mapGitHubStateToStatus = (state: string, stateReason?: string): Ticket['status'] => {
-  if (state === 'open') {
+const mapGitHubStateToStatus = (state: string): Ticket['status'] => {
+  if (state === "Todo"){
+    return 'todo';
+  }
+
+  if (state === "In Progress"){
     return 'in-progress';
-  } else if (state === 'closed') {
-    // We can use stateReason to further refine the status if needed
-    // For example, if stateReason is 'not_planned', we might want a different status
-    if (stateReason === 'not_planned') {
-      return 'review'; // Map to review instead of done for issues closed as not planned
-    }
+  }
+
+  if (state === "Review"){
+    return 'review';
+  }
+
+  if (state === "Done"){
     return 'done';
   }
+
   return 'todo'; // Default fallback
 };
