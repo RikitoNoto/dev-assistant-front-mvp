@@ -390,6 +390,22 @@ export const deleteIssue = async (projectId: string, issueId: string): Promise<v
   }
 };
 
+export const deleteGithubIssue = async (projectId: string, issueId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/issues/${projectId}/github/${issueId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+  } catch (error) {
+    console.error(`Failed to delete GitHub issue ${issueId} for project ${projectId}:`, error);
+    throw error;
+  }
+};
+
 export const getTechSpecDocument = async (projectId: string): Promise<string | null> => {
   try {
     const response = await fetch(`/documents/tech-spec/${projectId}`);
@@ -511,6 +527,7 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
       assignee: issue.assignee?.login,
       comments: issue.comments ? [{ id: issue.id, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
       priority: 'medium', // GitHub doesn't have a direct priority field, defaulting to medium
+      isFromGitHub: true, // Flag to indicate this ticket is from GitHub
     }));
 
     return tickets;

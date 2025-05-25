@@ -185,7 +185,8 @@ const ProjectPage: React.FC = () => {
           description: '',
           status: 'todo',
           priority: 'medium',
-          comments: []
+          comments: [],
+          isFromGitHub: false // Explicitly mark as not from GitHub
         };
         
         // Call the API to create the ticket
@@ -268,7 +269,9 @@ const ProjectPage: React.FC = () => {
       // 更新されたチケット情報
       const updatedTicket: Ticket = {
         ...ticketToUpdate,
-        status: newStatus
+        status: newStatus,
+        // Preserve the isFromGitHub flag if it exists
+        isFromGitHub: ticketToUpdate.isFromGitHub
       };
       
       // ローカルの状態を更新
