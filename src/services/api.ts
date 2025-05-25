@@ -284,12 +284,6 @@ export interface SaveIssueResponse {
   status: "success" | "error";
 }
 
-export interface GitHubIssueCreate {
-  title: string;
-  description: string;
-  status: Ticket['status'];
-}
-
 export interface GitHubIssueResponse {
   issue_id: string;
   github_issue_number: number;
@@ -301,30 +295,53 @@ export const saveIssues = async (projectId: string, issue: Ticket): Promise<Save
     // First, check if this project is connected to GitHub by fetching the project details
     const project = await getProject(projectId);
     
-    // If the project is connected to GitHub and this is a new issue creation (not an update)
-    if (project?.githubProjId && (!issue.issue_id || issue.issue_id === '')) {
-      // Use the GitHub issue creation endpoint
-      const response = await fetch(`/issues/${projectId}/github`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: issue.title,
-          description: issue.description,
-          status: issue.status
-        }),
-      });
+    if (project?.githubProjId) {
+      // If the project is connected to GitHub
+      if (!issue.issue_id || issue.issue_id === '') {
+        // For new issue creation
+        const response = await fetch(`/issues/${projectId}/github`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: issue.title,
+            description: issue.description,
+            status: issue.status
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } else {
+        // For updating existing GitHub issues
+        const response = await fetch(`/issues/${projectId}/github/${issue.issue_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: issue.title,
+            description: issue.description,
+            status: issue.status
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data;
       }
-
-      const data = await response.json();
-      return data;
     } else {
-      // Proceed with local issue creation/update if not GitHub-connected or if updating an existing issue
+      // Proceed with local issue creation/update if not GitHub-connected
       const isUpdate = issue.issue_id != null && issue.issue_id !== '';
       const method = isUpdate ? 'PUT' : 'POST';
       const url = isUpdate ? `/issues/${projectId}/${issue.issue_id}` : '/issues/';
