@@ -8,7 +8,7 @@ import ProjectTabs from '../components/ProjectTabs';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import TicketsList from '../components/TicketsList';
 import GitHubIntegrationModal from '../components/GitHubIntegrationModal';
-import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue, getProject, getGitHubIssues } from '../services/api';
+import { getPlanDocument, getTechSpecDocument, savePlanDocument, saveTechSpecDocument, getIssues, saveIssues, deleteIssue, deleteGithubIssue, getProject, getGitHubIssues } from '../services/api';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 import { Ticket, Project } from '../types';
 
@@ -185,7 +185,8 @@ const ProjectPage: React.FC = () => {
           description: '',
           status: 'todo',
           priority: 'medium',
-          comments: []
+          comments: [],
+          isFromGitHub: false // Explicitly mark as not from GitHub
         };
         
         // Call the API to create the ticket
@@ -210,8 +211,17 @@ const ProjectPage: React.FC = () => {
       else if ('type' in ticket && ticket.type === 'remove') {
         if(!ticket.id) return;
         
-        // Call the API to delete the ticket
-        await deleteIssue(projectId, ticket.id);
+        // Find the ticket to determine if it's from GitHub
+        const ticketToDelete = tickets.find(t => t.issue_id === ticket.id);
+        
+        // Call the appropriate API to delete the ticket based on its source
+        if (ticketToDelete?.isFromGitHub) {
+          // Use GitHub-specific deletion for GitHub tickets
+          await deleteGithubIssue(projectId, ticket.id);
+        } else {
+          // Use regular deletion for local tickets
+          await deleteIssue(projectId, ticket.id);
+        }
         
         // Update the tickets state by removing the deleted ticket
         setTickets(prev => prev.filter(t => t.issue_id !== ticket.id));
@@ -268,7 +278,9 @@ const ProjectPage: React.FC = () => {
       // 更新されたチケット情報
       const updatedTicket: Ticket = {
         ...ticketToUpdate,
-        status: newStatus
+        status: newStatus,
+        // Preserve the isFromGitHub flag if it exists
+        isFromGitHub: ticketToUpdate.isFromGitHub
       };
       
       // ローカルの状態を更新

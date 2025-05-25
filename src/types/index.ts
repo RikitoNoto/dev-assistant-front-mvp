@@ -26,6 +26,7 @@ export interface Ticket {
   assignee?: string;
   comments: Comment[];
   priority: 'low' | 'medium' | 'high';
+  isFromGitHub?: boolean;
 }
 
 export interface Comment {

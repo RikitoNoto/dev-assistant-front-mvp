@@ -3,6 +3,7 @@ import { Ticket } from '../types';
 import { Clock, AlertTriangle, CheckCircle, Check, X } from 'lucide-react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { FaGithub } from 'react-icons/fa';
 
 interface TicketsListProps {
   tickets: Ticket[];
@@ -15,7 +16,7 @@ interface TicketsListProps {
 
 const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = [], removeTicketIds = [], onAccept, onReject, onStatusChange }) => {
   // Create new ticket objects from newTicketTitles
-  const newTickets: Ticket[] = newTicketTitles.map((title, index) => ({
+  const newTickets: Ticket[] = newTicketTitles.map(title => ({
     project_id: "",
     issue_id: "",
     title,
@@ -241,6 +242,7 @@ const DraggableTicket: React.FC<DraggableTicketProps> = ({
         <h4 className={`text-sm font-medium ${
           ticket.issue_id === "" ? 'text-green-800' : removeTicketIds.includes(ticket.issue_id) ? 'text-red-800' : 'text-gray-900'
         }`}>
+          {ticket.isFromGitHub && <FaGithub className="inline-block mr-1 text-gray-600" size={14} />}
           {ticket.title}
         </h4>
       </div>
