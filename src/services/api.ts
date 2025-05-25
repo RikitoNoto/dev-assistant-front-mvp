@@ -284,34 +284,73 @@ export interface SaveIssueResponse {
   status: "success" | "error";
 }
 
-export const saveIssues = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse> => {
+export interface GitHubIssueCreate {
+  title: string;
+  description: string;
+  status: Ticket['status'];
+}
+
+export interface GitHubIssueResponse {
+  issue_id: string;
+  github_issue_number: number;
+  github_issue_url: string;
+}
+
+export const saveIssues = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse | GitHubIssueResponse> => {
   try {
-    // Determine if this is an update (PUT) or create (POST) based on issue_id presence
-    const isUpdate = issue.issue_id != null && issue.issue_id !== '';
-    const method = isUpdate ? 'PUT' : 'POST';
-    const url = isUpdate ? `/issues/${projectId}/${issue.issue_id}` : '/issues/';
+    // First, check if this project is connected to GitHub by fetching the project details
+    const project = await getProject(projectId);
     
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        project_id: projectId,
-        issue_id: issue.issue_id,
-        title: issue.title,
-        description: issue.description,
-        status: issue.status,
-      }),
-    });
+    // If the project is connected to GitHub and this is a new issue creation (not an update)
+    if (project?.githubProjId && (!issue.issue_id || issue.issue_id === '')) {
+      // Use the GitHub issue creation endpoint
+      const response = await fetch(`/issues/${projectId}/github`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: issue.title,
+          description: issue.description,
+          status: issue.status
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } else {
+      // Proceed with local issue creation/update if not GitHub-connected or if updating an existing issue
+      const isUpdate = issue.issue_id != null && issue.issue_id !== '';
+      const method = isUpdate ? 'PUT' : 'POST';
+      const url = isUpdate ? `/issues/${projectId}/${issue.issue_id}` : '/issues/';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          project_id: projectId,
+          issue_id: issue.issue_id,
+          title: issue.title,
+          description: issue.description,
+          status: issue.status,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data;
     }
-
-    const data = await response.json();
-    return data;
   } catch (error) {
     console.error(`Failed to ${issue.issue_id ? 'update' : 'create'} issue for project ${projectId}:`, error);
     throw error;
@@ -448,12 +487,12 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
     // Transform GitHub issues to match the Ticket interface
     const tickets: Ticket[] = data.map((issue: any) => ({
       project_id: projectId,
-      issue_id: `github-${issue.id}`, // Prefix with 'github-' to distinguish from local issues
+      issue_id: issue.id,
       title: issue.title,
       description: issue.body || '',
       status: mapGitHubStateToStatus(issue.project_status),
       assignee: issue.assignee?.login,
-      comments: issue.comments ? [{ id: `comment-${issue.id}`, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
+      comments: issue.comments ? [{ id: issue.id, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
       priority: 'medium', // GitHub doesn't have a direct priority field, defaulting to medium
     }));
 
