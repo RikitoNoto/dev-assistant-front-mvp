@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Ticket } from '../types';
 import { Clock, AlertTriangle, CheckCircle, Check, X } from 'lucide-react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { FaGithub } from 'react-icons/fa';
+import IssueDetailModal from './IssueDetailModal';
 
 interface TicketsListProps {
   tickets: Ticket[];
@@ -15,6 +16,21 @@ interface TicketsListProps {
 }
 
 const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = [], removeTicketIds = [], onAccept, onReject, onStatusChange }) => {
+  // State for the issue detail modal
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Function to open the modal with a specific ticket
+  const openTicketDetail = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setIsModalOpen(true);
+  };
+
+  // Function to close the modal
+  const closeTicketDetail = () => {
+    setIsModalOpen(false);
+    setSelectedTicket(null);
+  };
   // Create new ticket objects from newTicketTitles
   const newTickets: Ticket[] = newTicketTitles.map(title => ({
     project_id: "",
@@ -62,10 +78,18 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = []
               onReject={onReject}
               onStatusChange={onStatusChange}
               priorityIcons={priorityIcons}
+              onTicketClick={openTicketDetail}
             />
           ))}
         </div>
       </div>
+      
+      {/* Issue Detail Modal */}
+      <IssueDetailModal 
+        ticket={selectedTicket} 
+        isOpen={isModalOpen} 
+        onClose={closeTicketDetail} 
+      />
     </DndProvider>
   );
 };
@@ -87,6 +111,7 @@ interface StatusColumnProps {
   onReject?: (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => void;
   onStatusChange?: (ticketId: string, newStatus: Ticket['status']) => void;
   priorityIcons: Record<string, JSX.Element>;
+  onTicketClick: (ticket: Ticket) => void;
 }
 
 const StatusColumn: React.FC<StatusColumnProps> = ({ 
@@ -97,7 +122,8 @@ const StatusColumn: React.FC<StatusColumnProps> = ({
   onAccept, 
   onReject, 
   onStatusChange,
-  priorityIcons
+  priorityIcons,
+  onTicketClick
 }) => {
   // ドロップターゲットの設定
   const [{ isOver }, drop] = useDrop<DragItem, void, { isOver: boolean }>(() => ({
@@ -131,6 +157,7 @@ const StatusColumn: React.FC<StatusColumnProps> = ({
             onAccept={onAccept}
             onReject={onReject}
             priorityIcons={priorityIcons}
+            onTicketClick={onTicketClick}
           />
         ))}
         
@@ -151,6 +178,7 @@ interface DraggableTicketProps {
   onAccept?: (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => void;
   onReject?: (ticket: Ticket | { type: 'add' | 'remove'; id?: string; title?: string }) => void;
   priorityIcons: Record<string, JSX.Element>;
+  onTicketClick: (ticket: Ticket) => void;
 }
 
 const DraggableTicket: React.FC<DraggableTicketProps> = ({ 
@@ -158,7 +186,8 @@ const DraggableTicket: React.FC<DraggableTicketProps> = ({
   removeTicketIds, 
   onAccept, 
   onReject,
-  priorityIcons
+  priorityIcons,
+  onTicketClick
 }) => {
   // 新規チケットや削除予定のチケットはドラッグできないようにする
   const isDraggable = ticket.issue_id !== "" && !removeTicketIds.includes(ticket.issue_id);
@@ -180,7 +209,13 @@ const DraggableTicket: React.FC<DraggableTicketProps> = ({
   return (
     <div 
       ref={isDraggable ? drag : undefined}
-      className={`p-3 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 ${
+      onClick={() => {
+        // 新規チケットや削除予定のチケットはクリックできないようにする
+        if (ticket.issue_id !== "" && !removeTicketIds.includes(ticket.issue_id)) {
+          onTicketClick(ticket);
+        }
+      }}
+      className={`p-3 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 ${isDraggable ? 'cursor-pointer' : ''} ${
         isDragging ? 'opacity-50' : 'opacity-100'
       } ${
         removeTicketIds.includes(ticket.issue_id) 
