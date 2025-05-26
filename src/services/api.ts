@@ -522,7 +522,7 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
       project_id: projectId,
       issue_id: issue.id,
       title: issue.title,
-      description: issue.body || '',
+      description: issue.description || '',
       status: mapGitHubStateToStatus(issue.project_status),
       assignee: issue.assignee?.login,
       comments: issue.comments ? [{ id: issue.id, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
