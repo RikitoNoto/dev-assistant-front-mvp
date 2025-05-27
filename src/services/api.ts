@@ -34,7 +34,7 @@ export const sendStreamingMessage = (
     ? `/chat/plan/stream`
     : type === 'technicalSpecs'
       ? `/chat/tech-spec/stream`
-      : `/chat/issue/stream`;
+      : `/chat/issue-titles/stream`;
 
   const controller = new AbortController();
   const signal = controller.signal;
