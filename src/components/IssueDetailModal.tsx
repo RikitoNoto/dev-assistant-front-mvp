@@ -4,6 +4,7 @@ import { FaGithub } from 'react-icons/fa';
 import { Ticket, Message } from '../types';
 import { IssueChatbot, defaultChatbotApiFunctions } from '../models/chatbot';
 import ChatInterface from './ChatInterface';
+import MarkdownRenderer from './MarkdownRenderer';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 
 interface IssueDetailModalProps {
@@ -298,8 +299,12 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-50 p-3 rounded-md text-gray-700 whitespace-pre-wrap">
-                  {ticket.description || <span className="text-gray-400 italic">No description provided</span>}
+                <div className="bg-gray-50 p-3 rounded-md text-gray-700">
+                  {ticket.description ? (
+                    <MarkdownRenderer content={ticket.description} />
+                  ) : (
+                    <span className="text-gray-400 italic">No description provided</span>
+                  )}
                 </div>
               )}
             </div>
@@ -315,7 +320,9 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
                         <span className="font-medium">{comment.author}</span>
                         <span className="text-sm text-gray-500">{new Date(comment.timestamp).toLocaleString()}</span>
                       </div>
-                      <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                      <div className="text-gray-700">
+                        <MarkdownRenderer content={comment.content} />
+                      </div>
                     </div>
                   ))}
                 </div>
