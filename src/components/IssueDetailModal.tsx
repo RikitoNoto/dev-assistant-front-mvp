@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Clock, AlertTriangle, CheckCircle, MessageSquare, Send } from 'lucide-react';
+import { X, Clock, AlertTriangle, CheckCircle, MessageSquare, Send, Check, Loader2 } from 'lucide-react';
 import { FaGithub } from 'react-icons/fa';
 import { Ticket, Message } from '../types';
 import { IssueChatbot, defaultChatbotApiFunctions } from '../models/chatbot';
 import ChatInterface from './ChatInterface';
+import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 
 interface IssueDetailModalProps {
   ticket: Ticket | null;
   isOpen: boolean;
   onClose: () => void;
+  onSave?: (updatedTicket: Ticket) => Promise<void>;
 }
 
-const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onClose }) => {
+const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onClose, onSave }) => {
   if (!isOpen || !ticket) return null;
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -20,11 +22,20 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
   const chatbotRef = useRef<IssueChatbot | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   
+  // Diff view state
+  const [showDiff, setShowDiff] = useState(false);
+  const [originalContent, setOriginalContent] = useState<string>('');
+  const [newContent, setNewContent] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  
   // Initialize chatbot when ticket changes
   useEffect(() => {
     if (ticket) {
       chatbotRef.current = new IssueChatbot(ticket.project_id, defaultChatbotApiFunctions);
       chatbotRef.current.setIssueId(ticket.issue_id);
+      // Initialize original content for diff view
+      setOriginalContent(ticket.description || '');
     }
     return () => {
       // Abort any ongoing request when component unmounts
@@ -64,6 +75,42 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
     setIsChatOpen(!isChatOpen);
   };
   
+  // Handle accepting diff changes
+  const handleAcceptDiff = async () => {
+    if (!ticket) return;
+    
+    setIsSaving(true);
+    setSaveError(null);
+    
+    try {
+      // Create updated ticket with new description
+      const updatedTicket: Ticket = {
+        ...ticket,
+        description: newContent
+      };
+      
+      // Call the parent component's save function if provided
+      if (onSave) {
+        await onSave(updatedTicket);
+      }
+      
+      // Update local state
+      setOriginalContent(newContent);
+      setShowDiff(false);
+    } catch (err: any) {
+      console.error('Error saving issue content:', err);
+      setSaveError(err.message || 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  // Handle rejecting diff changes
+  const handleRejectDiff = () => {
+    setShowDiff(false);
+    setNewContent('');
+  };
+  
   const handleSendMessage = (content: string) => {
     if (!content.trim() || !chatbotRef.current || isLoading) return;
     
@@ -93,6 +140,12 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
     // Add the new user message to history
     history.push({ user: content });
     
+    // Reset diff view state for new conversation
+    setShowDiff(false);
+    
+    // Track if this is the first file chunk
+    let isFirstFileChunk = true;
+    
     // Use the issue-specific chat method
     abortControllerRef.current = chatbotRef.current.sendIssueContentMessage(
       content,
@@ -108,6 +161,19 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
             };
             return newMessages;
           });
+        }
+        
+        // Handle file content for diff view
+        if (chunk.file) {
+          if (isFirstFileChunk) {
+            // First chunk - initialize the diff view
+            setShowDiff(true);
+            setNewContent(chunk.file);
+            isFirstFileChunk = false;
+          } else {
+            // For subsequent chunks, append to the existing content
+            setNewContent(prev => prev + chunk.file);
+          }
         }
       },
       (error) => {
@@ -183,9 +249,59 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
             {/* Description */}
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-2">Description</h3>
-              <div className="bg-gray-50 p-3 rounded-md text-gray-700 whitespace-pre-wrap">
-                {ticket.description || <span className="text-gray-400 italic">No description provided</span>}
-              </div>
+              
+              {/* Save status messages */}
+              {(isSaving || saveError) && (
+                <div className={`mb-4 p-3 rounded-md border ${saveError ? 'bg-red-100 border-red-300 text-red-700' : 'bg-blue-100 border-blue-300 text-blue-700'}`}>
+                  {isSaving && <><Loader2 className="h-4 w-4 mr-1 inline animate-spin" /> Saving...</>}
+                  {saveError && `Save Error: ${saveError}`}
+                </div>
+              )}
+              
+              {/* Diff View */}
+              {showDiff ? (
+                <div className="mt-4 border border-gray-300 rounded-md">
+                  <div className="bg-gray-100 px-4 py-2 border-b border-gray-300 flex justify-between items-center">
+                    <h3 className="text-md font-semibold text-gray-800">Suggested Changes</h3>
+                    <div className="space-x-2">
+                      <button
+                        onClick={handleAcceptDiff}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        disabled={isSaving}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Accept
+                      </button>
+                      <button
+                        onClick={handleRejectDiff}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        disabled={isSaving}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-4 max-h-[60vh] overflow-y-auto">
+                    <ReactDiffViewer
+                      oldValue={originalContent}
+                      newValue={newContent}
+                      splitView={true}
+                      compareMethod={DiffMethod.WORDS}
+                      styles={{
+                        diffContainer: { fontSize: '0.875rem' },
+                        gutter: { minWidth: '1rem' },
+                        line: { lineHeight: '1.5' },
+                      }}
+                      useDarkTheme={false}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-3 rounded-md text-gray-700 whitespace-pre-wrap">
+                  {ticket.description || <span className="text-gray-400 italic">No description provided</span>}
+                </div>
+              )}
             </div>
             
             {/* Comments */}
