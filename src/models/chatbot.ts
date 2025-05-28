@@ -101,6 +101,16 @@ export class IssueChatbot extends Chatbot {
    * @param onComplete Callback when streaming is complete
    * @returns AbortController to cancel the request if needed
    */
+  private isFromGitHub: boolean = false;
+
+  /**
+   * Set whether the current issue is from GitHub
+   * @param isFromGitHub Whether the issue is from GitHub
+   */
+  public setIsFromGitHub(isFromGitHub: boolean): void {
+    this.isFromGitHub = isFromGitHub;
+  }
+
   public sendIssueContentMessage(
     messageContent: string,
     history: Array<{ [sender: string]: string }>,
@@ -119,7 +129,8 @@ export class IssueChatbot extends Chatbot {
       this.projectId,
       onChunk,
       onError,
-      onComplete
+      onComplete,
+      this.isFromGitHub
     );
   }
 }

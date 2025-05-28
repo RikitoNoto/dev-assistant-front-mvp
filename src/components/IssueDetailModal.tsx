@@ -35,6 +35,10 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
     if (ticket) {
       chatbotRef.current = new IssueChatbot(ticket.project_id, defaultChatbotApiFunctions);
       chatbotRef.current.setIssueId(ticket.issue_id);
+      // Set isFromGitHub flag if the ticket is from GitHub
+      if (ticket.isFromGitHub) {
+        chatbotRef.current.setIsFromGitHub(true);
+      }
       // Initialize original content for diff view
       setOriginalContent(ticket.description || '');
     }
@@ -98,6 +102,9 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
       // Update local state
       setOriginalContent(newContent);
       setShowDiff(false);
+      
+      // Update the local ticket reference to reflect changes in the UI
+      ticket.description = newContent;
     } catch (err: any) {
       console.error('Error saving issue content:', err);
       setSaveError(err.message || 'Failed to save changes');

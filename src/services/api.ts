@@ -28,9 +28,12 @@ export const sendIssueContentStreamingMessage = (
   projectId: string,
   onStreamUpdate: StreamCallback,
   onError: ErrorCallback,
-  onClose: CloseCallback
+  onClose: CloseCallback,
+  isFromGitHub?: boolean
 ): AbortController => {
-  const url = `/chat/issue-content/${issueId}/stream`;
+  const url = isFromGitHub 
+    ? `/chat/issue-content/github/${issueId}/stream`
+    : `/chat/issue-content/${issueId}/stream`;
   const controller = new AbortController();
   const signal = controller.signal;
 
@@ -359,6 +362,7 @@ export const getIssues = async (projectId: string): Promise<Ticket[] | null> => 
     return null;
   }
 };
+
 
 export interface SaveIssueResponse {
   issue_id: string;
