@@ -5,6 +5,7 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { FaGithub } from 'react-icons/fa';
 import IssueDetailModal from './IssueDetailModal';
+import { saveIssues } from '../services/api';
 
 interface TicketsListProps {
   tickets: Ticket[];
@@ -19,6 +20,7 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = []
   // State for the issue detail modal
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [updatingTicket, setUpdatingTicket] = useState(false);
 
   // Function to open the modal with a specific ticket
   const openTicketDetail = (ticket: Ticket) => {
@@ -30,6 +32,31 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = []
   const closeTicketDetail = () => {
     setIsModalOpen(false);
     setSelectedTicket(null);
+  };
+
+  // Function to handle saving updated ticket
+  const handleSaveTicket = async (updatedTicket: Ticket) => {
+    if (!updatedTicket.project_id) {
+      console.error('Cannot save ticket: missing project_id');
+      return;
+    }
+    
+    setUpdatingTicket(true);
+    try {
+      // Save the updated ticket using the saveIssues API function
+      await saveIssues(updatedTicket.project_id, updatedTicket);
+      
+      // Update the ticket in the local state if needed
+      // This assumes that the parent component will refresh the tickets list
+      // after the save operation or that the tickets are managed by a state management system
+      
+      console.log('Issue updated successfully:', updatedTicket.issue_id);
+    } catch (error) {
+      console.error('Failed to save issue:', error);
+      throw error; // Re-throw to let the modal component handle the error
+    } finally {
+      setUpdatingTicket(false);
+    }
   };
   // Create new ticket objects from newTicketTitles
   const newTickets: Ticket[] = newTicketTitles.map(title => ({
@@ -88,7 +115,8 @@ const TicketsList: React.FC<TicketsListProps> = ({ tickets, newTicketTitles = []
       <IssueDetailModal 
         ticket={selectedTicket} 
         isOpen={isModalOpen} 
-        onClose={closeTicketDetail} 
+        onClose={closeTicketDetail}
+        onSave={handleSaveTicket}
       />
     </DndProvider>
   );

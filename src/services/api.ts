@@ -373,60 +373,90 @@ export interface GitHubIssueResponse {
 }
 
 export const saveIssues = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse | GitHubIssueResponse> => {
+  if(!issue.issue_id || issue.issue_id === ''){
+    return createIssue(projectId, issue);
+  }else{
+    return updateIssue(projectId, issue);
+  }
+}
+
+const updateIssue = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse | GitHubIssueResponse> => {
   try {
-    // First, check if this project is connected to GitHub by fetching the project details
+    if (issue.isFromGitHub) {
+      const response = await fetch(`/issues/${projectId}/github/${issue.issue_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: issue.title,
+          description: issue.description,
+          project_status: issue.status
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    }else{
+      const response = await fetch(`/issues/${projectId}/${issue.issue_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: issue.title,
+          description: issue.description,
+          project_status: issue.status
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    }
+  } catch (error) {
+    console.error(`Failed to update issue for project ${projectId}:`, error);
+    throw error;
+  }
+}
+
+const createIssue = async (projectId: string, issue: Ticket): Promise<SaveIssueResponse | GitHubIssueResponse> => {
+  try {
     const project = await getProject(projectId);
     
     if (project?.githubProjId) {
-      // If the project is connected to GitHub
-      if (!issue.issue_id || issue.issue_id === '') {
-        // For new issue creation
-        const response = await fetch(`/issues/${projectId}/github`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: issue.title,
-            description: issue.description,
-            status: issue.status
-          }),
-        });
+      const response = await fetch(`/issues/${projectId}/github`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: issue.title,
+          description: issue.description,
+          project_status: issue.status
+        }),
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } else {
-        // For updating existing GitHub issues
-        const response = await fetch(`/issues/${projectId}/github/${issue.issue_id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: issue.title,
-            description: issue.description,
-            status: issue.status
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-
-        const data = await response.json();
-        return data;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
+
+      const data = await response.json();
+      return data;
     } else {
       // Proceed with local issue creation/update if not GitHub-connected
-      const isUpdate = issue.issue_id != null && issue.issue_id !== '';
-      const method = isUpdate ? 'PUT' : 'POST';
-      const url = isUpdate ? `/issues/${projectId}/${issue.issue_id}` : '/issues/';
+      const method = 'POST';
+      const url = '/issues/';
       
       const response = await fetch(url, {
         method,
@@ -451,10 +481,10 @@ export const saveIssues = async (projectId: string, issue: Ticket): Promise<Save
       return data;
     }
   } catch (error) {
-    console.error(`Failed to ${issue.issue_id ? 'update' : 'create'} issue for project ${projectId}:`, error);
+    console.error(`Failed to create issue for project ${projectId}:`, error);
     throw error;
   }
-};
+}
 
 export const deleteIssue = async (projectId: string, issueId: string): Promise<void> => {
   try {
