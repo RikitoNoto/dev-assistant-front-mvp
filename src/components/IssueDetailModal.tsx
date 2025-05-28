@@ -201,34 +201,35 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       onClick={handleOverlayClick}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+      <div className={`bg-white rounded-lg shadow-xl w-full ${isChatOpen ? 'max-w-6xl' : 'max-w-4xl'} max-h-[95vh] overflow-hidden flex flex-col transition-all duration-300 ease-in-out`}>
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold flex items-center">
             {ticket.isFromGitHub && <FaGithub className="inline-block mr-2 text-gray-600" size={16} />}
             {ticket.title}
           </h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-6 w-6" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={toggleChat}
+              className={`p-2 rounded-md ${isChatOpen ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-100'} transition-colors`}
+              aria-label={isChatOpen ? 'Close chat' : 'Open chat'}
+            >
+              <MessageSquare className="h-5 w-5" />
+            </button>
+            <button 
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
         
         {/* Content */}
         <div className="flex flex-grow overflow-hidden h-[75vh] relative">
           {/* Issue Details */}
           <div className={`${isChatOpen ? 'w-1/2' : 'w-full'} p-4 overflow-y-auto transition-all duration-300 ease-in-out`}>
-            {/* Chat toggle button */}
-            <button
-              onClick={toggleChat}
-              className={`fixed right-4 bottom-4 z-10 p-3 rounded-full shadow-lg ${isChatOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'} text-white transition-colors`}
-              aria-label={isChatOpen ? 'Close chat' : 'Open chat'}
-            >
-              <MessageSquare className="h-5 w-5" />
-            </button>
             
             {/* Status and Priority */}
             <div className="flex flex-wrap gap-3 mb-4">
@@ -332,9 +333,9 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
             </div>
           </div>
           
-          {/* Chat Panel */}
+          {/* Chat Panel - Slide in from the side */}
           <div 
-            className={`${isChatOpen ? 'w-1/2' : 'w-0'} h-full border-l border-gray-200 transition-all duration-300 ease-in-out overflow-hidden flex flex-col`}
+            className={`absolute top-0 right-0 h-full border-l border-gray-200 bg-white transition-all duration-300 ease-in-out overflow-hidden flex flex-col ${isChatOpen ? 'w-1/2' : 'w-0'}`}
           >
             {isChatOpen && (
               <>
