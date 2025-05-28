@@ -21,6 +21,79 @@ type CloseCallback = () => void;
 
 type HistoryItem = { [key: string]: string };
 
+export const sendIssueContentStreamingMessage = (
+  issueId: string,
+  messageContent: string,
+  history: HistoryItem[],
+  projectId: string,
+  onStreamUpdate: StreamCallback,
+  onError: ErrorCallback,
+  onClose: CloseCallback
+): AbortController => {
+  const url = `/chat/issue-content/${issueId}/stream`;
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: messageContent, history: history, project_id: projectId }),
+        signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API error: ${errorText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        // Try to extract valid JSON objects from the chunk
+        const jsonMatches = chunk.match(/{.*?}/gs);
+        if (jsonMatches) {
+          for (const match of jsonMatches) {
+            try {
+              const json = JSON.parse(match);
+              onStreamUpdate({...json});
+            } catch (parseError) {
+              console.warn('Failed to parse JSON chunk:', match);
+              // Continue with other matches even if one fails
+            }
+          }
+        }
+        if (done) {
+          break;
+        }
+      }
+
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        onError(error);
+      }
+    }
+    finally {
+      onClose();
+    }
+  };
+
+  fetchData();
+  return controller;
+};
+
 export const sendStreamingMessage = (
   type: 'plan' | 'technicalSpecs' | 'issue',
   messageContent: string,
@@ -67,10 +140,19 @@ export const sendStreamingMessage = (
         const { done, value } = await reader.read();
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
-        chunk.match(/{.*?}/gs)?.forEach((v)=>{
-          const json = JSON.parse(v);
-            onStreamUpdate({...json});
-        })
+        // Try to extract valid JSON objects from the chunk
+        const jsonMatches = chunk.match(/{.*?}/gs);
+        if (jsonMatches) {
+          for (const match of jsonMatches) {
+            try {
+              const json = JSON.parse(match);
+              onStreamUpdate({...json});
+            } catch (parseError) {
+              console.warn('Failed to parse JSON chunk:', match);
+              // Continue with other matches even if one fails
+            }
+          }
+        }
         if (done) {
           break;
         }

@@ -1,6 +1,7 @@
 import { Message, Ticket } from '../types'; // Added Ticket
 import {
   sendStreamingMessage,
+  sendIssueContentStreamingMessage,
   ApiFunctions
 } from '../services/api';
 
@@ -77,8 +78,49 @@ export class TechSpecChatbot extends Chatbot {
  * Issue 用チャットボット (メッセージ送信のみ)
  */
 export class IssueChatbot extends Chatbot {
+  private issueId: string | null = null;
+  
   constructor(projectId: string, apiFunctions: Pick<ApiFunctions, 'sendStreamingMessage'>) {
     super(projectId, apiFunctions);
+  }
+  
+  /**
+   * Set the current issue ID for issue-specific chat
+   * @param issueId The ID of the issue to chat about
+   */
+  public setIssueId(issueId: string): void {
+    this.issueId = issueId;
+  }
+  
+  /**
+   * Send a message specifically about an issue's content
+   * @param messageContent The message to send
+   * @param history Previous conversation history
+   * @param onChunk Callback for each chunk of streaming response
+   * @param onError Callback for error handling
+   * @param onComplete Callback when streaming is complete
+   * @returns AbortController to cancel the request if needed
+   */
+  public sendIssueContentMessage(
+    messageContent: string,
+    history: Array<{ [sender: string]: string }>,
+    onChunk: StreamCallback,
+    onError: ErrorCallback,
+    onComplete: CompletionCallback
+  ): AbortController {
+    if (!this.issueId) {
+      throw new Error("Issue ID must be set before sending issue content messages");
+    }
+    
+    return sendIssueContentStreamingMessage(
+      this.issueId,
+      messageContent,
+      history,
+      this.projectId,
+      onChunk,
+      onError,
+      onComplete
+    );
   }
 }
 
