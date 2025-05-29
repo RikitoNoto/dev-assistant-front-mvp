@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Clock, AlertTriangle, CheckCircle, MessageSquare, Send, Check, Loader2 } from 'lucide-react';
+import { X, Clock, AlertTriangle, CheckCircle, MessageSquare, Send, Check, Loader2, RefreshCw } from 'lucide-react';
 import { FaGithub } from 'react-icons/fa';
 import { Ticket, Message } from '../types';
 import { IssueChatbot, defaultChatbotApiFunctions } from '../models/chatbot';
@@ -78,6 +78,23 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
   
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
+  };
+  
+  const handleResetConversation = () => {
+    // Abort any ongoing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Reset messages array
+    setMessages([]);
+    
+    // Reset diff view state
+    setShowDiff(false);
+    setNewContent('');
+    
+    setIsLoading(false);
   };
   
   // Handle accepting diff changes
@@ -346,9 +363,19 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ ticket, isOpen, onC
           >
             {isChatOpen && (
               <>
-                <div className="p-3 border-b border-gray-200 bg-gray-50">
-                  <h3 className="text-lg font-medium">Issue Chat</h3>
-                  <p className="text-sm text-gray-500">Ask questions about this issue</p>
+                <div className="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-medium">Issue Chat</h3>
+                    <p className="text-sm text-gray-500">Ask questions about this issue</p>
+                  </div>
+                  <button 
+                    onClick={handleResetConversation} 
+                    className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm py-1 px-2 rounded hover:bg-gray-100"
+                    title="新規会話"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>新規会話</span>
+                  </button>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <ChatInterface
