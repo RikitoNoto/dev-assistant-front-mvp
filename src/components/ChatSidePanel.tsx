@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import ChatInterface from './ChatInterface';
 import { Conversation, Message, Ticket } from '../types';
 import { getConversationHistory } from '../mock/data';
@@ -77,6 +77,25 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
     };
     if (isOpen) fetchInitialDocument();
   }, [projectId, type, isOpen]);
+
+  const handleResetConversation = () => {
+    if (isSendingMessage) {
+      // Abort any ongoing request
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Reset conversation with empty messages array
+    setConversation({
+      id: `conv-${Date.now()}`,
+      projectId,
+      type,
+      messages: [],
+    });
+    
+    setIsSendingMessage(false);
+    isFirstFileChunk.current = true;
+  };
 
   const handleSendMessage = (content: string) => {
     if (!projectId || !type || isSendingMessage || !chatbot) return;
@@ -164,9 +183,19 @@ const ChatSidePanel: React.FC<ChatSidePanelProps> = ({ isOpen, onClose, projectI
     <div className={`fixed top-0 right-0 h-full w-[400px] bg-white shadow-lg z-50 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
         <h2 className="text-lg font-semibold">{type === 'issue' ? 'Issue Chat' : 'AI Chat'}</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <X className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleResetConversation} 
+            className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm py-1 px-2 rounded hover:bg-gray-100"
+            title="新規会話"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>新規会話</span>
+          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
       <div className="flex flex-col h-[calc(100vh-56px)]">
         {/* チャット */}

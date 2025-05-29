@@ -5,7 +5,7 @@ export interface Issue extends Ticket {
 export interface Conversation {
   id: string;
   projectId: string;
-  type: 'plan' | 'technicalSpecs';
+  type: 'plan' | 'technicalSpecs' | 'issue';
   messages: Message[];
 }
 
