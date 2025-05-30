@@ -639,7 +639,7 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
       issue_id: issue.id,
       title: issue.title,
       description: issue.description || '',
-      status: mapGitHubStateToStatus(issue.project_status),
+      status: mapGitHubStateToStatus(issue),
       assignee: issue.assignee?.login,
       comments: issue.comments ? [{ id: issue.id, content: `${issue.comments} comments on GitHub`, author: 'GitHub', timestamp: new Date().toISOString() }] : [],
       priority: 'medium', // GitHub doesn't have a direct priority field, defaulting to medium
@@ -659,20 +659,20 @@ export const getGitHubIssues = async (projectId: string): Promise<Ticket[] | nul
  * @param stateReason - Reason for the state (e.g., 'completed', 'not_planned')
  * @returns Status in the application's format
  */
-const mapGitHubStateToStatus = (state: string): Ticket['status'] => {
-  if (state === "Todo"){
+const mapGitHubStateToStatus = (issue: any): Ticket['status'] => {
+  if (issue.project_status === "Todo"){
     return 'todo';
   }
 
-  if (state === "In Progress"){
+  if (issue.project_status === "In Progress"){
     return 'in-progress';
   }
 
-  if (state === "Review"){
+  if (issue.project_status === "Review"){
     return 'review';
   }
 
-  if (state === "Done"){
+  if (issue.project_status === "Done" || issue.status === "CLOSED"){
     return 'done';
   }
 
